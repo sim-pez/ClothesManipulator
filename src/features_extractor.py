@@ -73,11 +73,16 @@ if __name__ == '__main__':
             dis_feat, _ = model(img)
             gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
 
-    if args.save_matrix:
-        np.save(os.path.join(args.feat_dir, 'gallery_feats.npy'), np.concatenate(gallery_feat, axis=0))
-        print('Saved indexed features at {dir}/gallery_feats.npy'.format(dir=args.feat_dir))
+    
+    np.save(os.path.join(args.feat_dir, 'gallery_feats.npy'), np.concatenate(gallery_feat, axis=0))
+    print('Saved indexed features at {dir}/gallery_feats.npy'.format(dir=args.feat_dir))
 """
+export DATASET_PATH="/path/to/dataset/folder/that/contain/img/subfolder"
+export DATASET_NAME="Shopping100k"
+export MODELS_DIR="/path/to/saved/model/checkpoints"
+
 python src/eval.py --dataset_name ${DATASET_NAME} --file_root splits/${DATASET_NAME} 
 --img_root ${DATASET_PATH} --load_pretrained_extractor ${MODELS_DIR}/checkpoints/extractor_best.pkl 
---load_pretrained_memory ${MODELS_DIR}/checkpoints/memory_best.pkl --save_matrix
+
+
 """
