@@ -61,17 +61,3 @@ class Extractor(nn.Module):
         return dis_feat, attr_classification_out
 
 
-class MemoryBlock(nn.Module):
-    """
-    Store the prototype embeddings of all attribute values
-    Args:
-        attr_nums: 1-D list of numbers of attribute values for each attribute
-        dim_chunk: int, the size of each attribute-specific embedding
-    """
-    def __init__(self, attr_nums, dim_chunk = 340):
-        super(MemoryBlock, self).__init__()
-        self.Memory = nn.Linear(np.sum(attr_nums), len(attr_nums) * dim_chunk, bias=False)
-
-    def forward(self, indicator):
-        t = self.Memory(indicator)
-        return t
