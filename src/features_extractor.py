@@ -77,4 +77,7 @@ if __name__ == '__main__':
         np.save(os.path.join(args.feat_dir, 'gallery_feats.npy'), np.concatenate(gallery_feat, axis=0))
         print('Saved indexed features at {dir}/gallery_feats.npy'.format(dir=args.feat_dir))
 """
+python src/eval.py --dataset_name ${DATASET_NAME} --file_root splits/${DATASET_NAME} 
+--img_root ${DATASET_PATH} --load_pretrained_extractor ${MODELS_DIR}/checkpoints/extractor_best.pkl 
+--load_pretrained_memory ${MODELS_DIR}/checkpoints/memory_best.pkl --save_matrix
 """
