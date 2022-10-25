@@ -46,6 +46,10 @@ if __name__ == '__main__':
     train_loader = data.DataLoader(train_data, shuffle=True, drop_last=True)
     valid_loader = data.DataLoader(valid_data, shuffle=False, drop_last=False)
     
-    for image, label in train_loader:
-        print(label)
+
+    for imgs, one_hots, labels, indicator in tqdm(train_loader):
+        print(imgs)
+        print(one_hots)
+        print(labels)
+        print(indicator)
         
