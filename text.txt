@@ -1,0 +1,3 @@
+gallary_feat_test.npy 301 *[64* 4076]
+
+[0]
