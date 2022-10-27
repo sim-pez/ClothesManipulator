@@ -3,11 +3,13 @@ CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 LICENSE
 NOTICE
+dati
 models/.DS_Store
 models/DeepFashion/extractor_best.pkl
 models/DeepFashion/memory_best.pkl
 models/Shopping100k/extractor_best.pkl
 models/Shopping100k/memory_best.pkl
+settings.json
 splits/.DS_Store
 splits/DeepFashion/attr_num.txt
 splits/DeepFashion/gt_test.txt
@@ -29,7 +31,6 @@ splits/Shopping100k/labels_train.txt
 splits/Shopping100k/ref_test.txt
 splits/Shopping100k/triplet_train_ind.txt
 splits/Shopping100k/triplet_train.txt
-src/__init__.py
 src/eval.py
 src/init_mem.py
 src/__pycache__
@@ -41,3 +42,10 @@ src/__pycache__/dataloader.cpython-37.pyc
 src/__pycache__/loss_function.cpython-37.pyc
 src/__pycache__/model.cpython-37.pyc
 src/__pycache__/utils.cpython-37.pyc
+models/Shopping100k/memory_best.pkl
+models/Shopping100k/extractor_best.pkl
+.vscode/settings.json
+eval_out/gallery_feats_train.npy
+eval_out/gallery_feats.npy
+models/Shopping100k/extractor_best.pkl
+models/Shopping100k/memory_best.pkl
