@@ -38,7 +38,7 @@ if __name__ == '__main__':
                             transforms.Resize((C.TARGET_IMAGE_SIZE, C.TARGET_IMAGE_SIZE)),
                             transforms.ToTensor(),
                             transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
-                        ]), mode='test')
+                        ]), mode='train')
 
     gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=args.batch_size, shuffle=False,
                                      sampler=torch.utils.data.SequentialSampler(gallery_data),
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     model = Extractor(gallery_data.attr_num, backbone=args.backbone, dim_chunk=args.dim_chunk)
     
-
+    print("attribut number is f{gallery_data.attr_num}")
     if args.load_pretrained_extractor:
         print('load {path} \n'.format(path=args.load_pretrained_extractor))
         model.load_state_dict(torch.load(args.load_pretrained_extractor))
@@ -74,15 +74,14 @@ if __name__ == '__main__':
             gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
 
     
-    np.save(os.path.join(args.feat_dir, 'gallery_feats.npy'), np.concatenate(gallery_feat, axis=0))
-    print('Saved indexed features at {dir}/gallery_feats.npy'.format(dir=args.feat_dir))
+    np.save(os.path.join(args.feat_dir, 'gallery_feats_train.npy'), np.concatenate(gallery_feat, axis=0))
+    print('Saved indexed features at {dir}/gallery_feats_train.npy'.format(dir=args.feat_dir))
 """
-export DATASET_PATH="/path/to/dataset/folder/that/contain/img/subfolder"
+export DATASET_PATH="dati/Images" 
 export DATASET_NAME="Shopping100k"
-export MODELS_DIR="/path/to/saved/model/checkpoints"
+export MODELS_DIR="models/Shopping100k" 
 
-python src/eval.py --dataset_name ${DATASET_NAME} --file_root splits/${DATASET_NAME} 
---img_root ${DATASET_PATH} --load_pretrained_extractor ${MODELS_DIR}/checkpoints/extractor_best.pkl 
+python src/features_extractor.py --dataset_name ${DATASET_NAME} --file_root splits/${DATASET_NAME} --img_root ${DATASET_PATH} --load_pretrained_extractor ${MODELS_DIR}/extractor_best.pkl 
 
 
 """

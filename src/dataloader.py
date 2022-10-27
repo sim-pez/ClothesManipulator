@@ -36,6 +36,13 @@ class DataQuery(data.Dataset):
             self.img_transform = transforms.ToTensor()
 
         self.img_data, self.label_data, self.ref_idxs, self.query_inds, self.attr_num = self._load_dataset()
+        #self.fea_Q, self.fea_T,self.vec_manip, 
+        #input
+        #Feature di Q,T, label di image Q,img T, restuire manipolation vector.
+
+        #output
+        #vettore di manipolazione, che corrisponde a Q,T img, 
+        #index of Q img,index of img T
 
     def _load_dataset(self):
         with open(os.path.join(self.file_root, "imgs_%s.txt" % self.mode)) as f:

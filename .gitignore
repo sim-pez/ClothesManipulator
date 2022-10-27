@@ -45,7 +45,5 @@ src/__pycache__/utils.cpython-37.pyc
 models/Shopping100k/memory_best.pkl
 models/Shopping100k/extractor_best.pkl
 .vscode/settings.json
-eval_out/gallery_feats_train.npy
-eval_out/gallery_feats.npy
 models/Shopping100k/extractor_best.pkl
 models/Shopping100k/memory_best.pkl
