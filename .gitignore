@@ -5,10 +5,7 @@ LICENSE
 NOTICE
 dati
 models/.DS_Store
-models/DeepFashion/extractor_best.pkl
-models/DeepFashion/memory_best.pkl
-models/Shopping100k/extractor_best.pkl
-models/Shopping100k/memory_best.pkl
+
 settings.json
 splits/.DS_Store
 splits/DeepFashion/attr_num.txt
@@ -42,8 +39,8 @@ src/__pycache__/dataloader.cpython-37.pyc
 src/__pycache__/loss_function.cpython-37.pyc
 src/__pycache__/model.cpython-37.pyc
 src/__pycache__/utils.cpython-37.pyc
-models/Shopping100k/memory_best.pkl
-models/Shopping100k/extractor_best.pkl
 .vscode/settings.json
-models/Shopping100k/extractor_best.pkl
-models/Shopping100k/memory_best.pkl
+.gitignore
+eval_out/gallery_feats_train.npy
+eval_out/gallery_feats_test.npy
+
