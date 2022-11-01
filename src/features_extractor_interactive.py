@@ -41,7 +41,7 @@ gallery_data = Data(file_root, img_root_path,
                             transforms.Resize((C.TARGET_IMAGE_SIZE, C.TARGET_IMAGE_SIZE)),
                             transforms.ToTensor(),
                             transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
-                        ]), mode='test')
+                        ]), mode='train')
 
 gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=64, shuffle=False,
                                      sampler=torch.utils.data.SequentialSampler(gallery_data),
@@ -66,16 +66,17 @@ with torch.no_grad():
     for i, (img, _) in enumerate(tqdm(gallery_loader)):
         img = img.cuda()
         dis_feat, _ = model(img)
-        print(len(dis_feat))
-       
+        print(len (dis_feat[0]))
         gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
-
-    
-np.save(os.path.join("/home/falhamdoosh/disentagledFeaturesExtractor/eval_out", 'gallery_feats_test.npy'), np.concatenate(gallery_feat, axis=0))
+dim_chunk=340
+gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1,dim_chunk * len(gallery_data.attr_num))    
+np.save(os.path.join("/home/falhamdoosh/disentagledFeaturesExtractor/eval_out", 'gallery_feats_train.npy'), np.concatenate(gallery_feat, axis=0))
 print('Saved indexed features at /gallery_feats.npy')
 
 #%%
-gallery_feat[310][1]
+
+#%%
+
 
 #%%
 """

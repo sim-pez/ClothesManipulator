@@ -38,7 +38,7 @@ if __name__ == '__main__':
                             transforms.Resize((C.TARGET_IMAGE_SIZE, C.TARGET_IMAGE_SIZE)),
                             transforms.ToTensor(),
                             transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
-                        ]), mode='train')
+                        ]), mode='test')
 
     gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=args.batch_size, shuffle=False,
                                      sampler=torch.utils.data.SequentialSampler(gallery_data),
@@ -73,8 +73,10 @@ if __name__ == '__main__':
             dis_feat, _ = model(img)
             gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
 
-    
-    np.save(os.path.join(args.feat_dir, 'gallery_feats_train.npy'), np.concatenate(gallery_feat, axis=0))
+    dim_chunk=340
+    gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1,dim_chunk * len(gallery_data.attr_num))    
+
+    np.save(os.path.join(args.feat_dir, 'gallery_feats_test.npy'), np.concatenate(gallery_feat, axis=0))
     print('Saved indexed features at {dir}/gallery_feats_train.npy'.format(dir=args.feat_dir))
 """
 export DATASET_PATH="dati/Images" 

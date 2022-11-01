@@ -94,20 +94,25 @@ def generate_multimanipulations(data, q_id, t_id, N):
                 specular_manip[i] = -m
         return specular_manip
 
+
+    #initialization
     q_labels = data.label_data[q_id]
     t_labels = data.label_data[t_id]
     attr_num = data.attr_num
-    manipulations = t_labels - q_labels
 
+
+    #get needed manipulation to go from q to t
+    manipulations = t_labels - q_labels
     manipulations_list = split_manipulations(manipulations, attr_num)
-    
     needed = np.count_nonzero(manipulations == 1)
     remaining = N - needed
     if remaining <= 0:
         raise Exception("Error: need " + str(needed) + " manipulations but N is too low!")
+
+
+    #creates extra random manipulations: they will be couples of specular manipulations
     remaining_to_randomize = int(remaining / 2) 
     actual_labels = t_labels
-
     for _ in range(remaining_to_randomize):
 
         available_indexes = [i for i,x in enumerate(actual_labels) if x == 0]
@@ -134,24 +139,27 @@ def generate_multimanipulations(data, q_id, t_id, N):
 #   ---------------------------------------------------    n transform    --------------------------------------------------
 
 def get_random_manipulation(q_labels, attr_num):
+    '''
+        gets label of q and outputs a compatible manipulation
+
+        Nota: è veramente a caso, non si torna indietro
+    '''
         
-        zero_indexes = [i for i, label in enumerate(q_labels) if label == 0]
-        positive_index = random.choice(zero_indexes)	
-        
-        offset = 0
-        for domain in attr_num:
-            if offset <= positive_index < domain + offset:
-                possible_choices = [i for i in range(offset, domain + offset) if i != positive_index]
-                negative_index = random.choice(possible_choices)
-                break
+    zero_indexes = [i for i, label in enumerate(q_labels) if label == 0]
+    positive_index = random.choice(zero_indexes)	
+    
+    offset = 0
+    for domain in attr_num:
+        if offset <= positive_index < domain + offset:
+            possible_choices = [i for i in range(offset, domain + offset) if i != positive_index]
+            negative_index = random.choice(possible_choices)
+            break
+        offset += domain
 
-            offset += domain
-
-        manipulation = np.zeros(len(q_labels), dtype=int)
-        manipulation[positive_index] = 1
-        manipulation[negative_index] = -1
-
-        return manipulation
+    manipulation = np.zeros(len(q_labels), dtype=int)
+    manipulation[positive_index] = 1
+    manipulation[negative_index] = -1
+    return manipulation
 
 
 def n_transform(data, t_id, q_id, N):
