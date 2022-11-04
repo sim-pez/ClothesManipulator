@@ -1,40 +1,67 @@
 from cProfile import label
 from operator import truediv
+from tqdm.auto import tqdm
 import constants as C
 import random
 import torchvision.transforms as transforms
 import numpy as np
-from argument_parser import add_base_args, add_train_args
 from dataloader import Data
-from loss_function import hash_labels, TripletSemiHardLoss
 from pprint import pprint
 
-from utils import split_labels
-
-# def find_couples() TODO
+from utils import split_labels, flatten_labels
 
 
+def find_couples(data):
+    '''
+    return couples of q,t that are compatible, i.e. that have the same all-zero attributes
+    '''
+
+    def check_match(q,t):
+
+        for attr_q, attr_t in zip(q,t):
+            if all(e == 0 for e in attr_t):
+                if not all(f == 0 for f in attr_q):
+                    return False
+            if all(f == 0 for f in attr_q):
+                if not all(e == 0 for e in attr_t):
+                    return False
+
+        return True
+
+
+    attr_num = data.attr_num
+    labels = data.label_data
+
+    splitted_labels = [split_labels(l, attr_num) for l in labels]
+    couples = [(i,j) for i, q in enumerate(tqdm(splitted_labels))
+                        for j, t in enumerate(splitted_labels)
+                            if i != j
+                                if check_match(q,t)]
+
+
+    return couples
+
+            
 def create_n_manipulations(data, t_id, q_id, N):
     '''
     generate a multi-manipulation of N manipulations
     '''
 
     def find_available_attribute(manipulations_splitted, q_labels_splitted, attr_num):
+        '''
+        find attribute id which is still not manipulated and it's label is not all zero
+        '''
 
-        attributes = []
-        for i, m in enumerate(manipulations_splitted):
-            if all(v == 0 for v in m):
-                if 1 in q_labels_splitted[i]:
-                    attributes.append(i)
+        return [i for i, m in enumerate(manipulations_splitted)
+                    if all(v == 0 for v in m)
+                         if 1 in q_labels_splitted[i]]
 
-        return attributes
+    def random_manipulate(manipulations_splitted, attr, labels_splitted):
+        '''
+            takes attribute labels_splitted[attr] and adds a manipulation saved on manipulations_splitted.
+        '''
 
-    def flatten(l):
-        return [item for sublist in l for item in sublist]
-
-    def random_manipulate(manipulations_splitted, attr, q_labels_splitted):
-
-        negative_idx = np.where(q_labels_splitted[attr] == 1)[0][0]
+        negative_idx = np.where(labels_splitted[attr] == 1)[0][0]
         manipulations_splitted[attr][negative_idx] = -1
 
         #not tested yet
@@ -45,6 +72,9 @@ def create_n_manipulations(data, t_id, q_id, N):
         return manipulations_splitted
 
     def casual_remove_manipulations(manipulations_splitted, r):
+        '''
+            removes r manipulation casually for manipulations_splitted
+        '''
 
         candidate_attributes = [i for i, attr in enumerate(manipulations_splitted) if 1 in attr]
         random.shuffle(candidate_attributes)
@@ -79,18 +109,24 @@ def create_n_manipulations(data, t_id, q_id, N):
             attribute = random.choice(candidate_attributes)                                   
             manipulations_splitted = random_manipulate(manipulations_splitted, attribute, q_labels_splitted)
 
-    manipulations = flatten(manipulations_splitted)
+    multi_manipulation = flatten_labels(manipulations_splitted)
 
-    return manipulations
+    return multi_manipulation
 
    
-#usage example
 if __name__ == '__main__':
     
-    file_root = 'mini_ds/splits/Shopping100k'
-    img_root_path = 'mini_ds/Images'
-    #file_root = 'splits/Shopping100k'
-    #img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
+    N = 8
+    file_root = 'splits/Shopping100k'
+    img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
+
+    '''
+    dataset for testing purpouses
+
+    #file_root = 'mini_ds/splits/Shopping100k'
+    #img_root_path = 'mini_ds/Images'
+    
+    '''
 
     print('Loading attributes')
     train_data = Data(file_root,  img_root_path, 
@@ -102,16 +138,27 @@ if __name__ == '__main__':
                           transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
                       ]), 'train')
 
-    '''
-    probably useless code:
-    #train_loader = data.DataLoader(train_data, shuffle=True, drop_last=True)
-    #valid_loader = data.DataLoader(valid_data, shuffle=False, drop_last=False)
+    #find couples
+    print("Finding couples of Q and T")
+    couples = find_couples(train_data)
+    random.shuffle(couples)
 
-    useful attributes:
-    train_data.label_data, train_data.attr_num
-    '''
+    #write couples
+    print("Writing couples")
+    f = open("multi_manip/couples.txt", "w")
+    for c in tqdm(couples):
+        f.write(str(c[0]) + " " + str(c[1]) + "\n")
+    f.close()
 
-    N = 8
-    t_id = 2
-    q_id = 3
-    manipulations = create_n_manipulations(train_data, t_id, q_id, N)
+    #find and write manipulations
+    print("Finding and writing manipulations")
+    f = open("multi_manip/couples.txt", "r")
+    e = open("multi_manip/manipulations.txt", "w")
+    for line in tqdm(f):
+        cpl = (list(line.strip().split(" ")))
+        manipulations = create_n_manipulations(train_data, int(cpl[0]), int(cpl[1]), N)
+        manipulations_str = [str(m) for m in manipulations]
+        e.write(' '.join(manipulations_str) + "\n")
+    
+    f.close()
+    e.close()

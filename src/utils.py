@@ -58,6 +58,13 @@ def split_labels(label, attr_num):
     return labels
 
 
+def flatten_labels(splitted_label):
+    '''
+    the opposite of split_labels(). Take splitted label w.r.t. attribute and returns a single one-hot label
+    '''
+    return np.array([item for sublist in splitted_label for item in sublist])
+
+
 def get_target_attr(indicator, attr_num):
     """
     given the indicator vector, return the target attribute that need to be changed
