@@ -149,7 +149,7 @@ def multi_manipulation_gen(file_root, img_root_path, N):
 
     #write couples
     print("Writing couples")
-    f = open("multi_manip/couples.txt", "w")
+    f = open("multi_manip/couples_N_{N}.txt", "w")
     for c in tqdm(couples):
         f.write(str(c[0]) + " " + str(c[1]) + "\n")
     f.close()
@@ -175,7 +175,7 @@ def multi_manipulation_gen(file_root, img_root_path, N):
    
 if __name__ == '__main__':
     
-    N = 8
+    N = 9
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
     multi_manipulation_gen(file_root, img_root_path, N)
