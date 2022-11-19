@@ -149,16 +149,20 @@ def multi_manipulation_gen(file_root, img_root_path, N):
 
     #write couples
     print("Writing couples")
-    f = open("multi_manip/couples_N_{N}.txt", "w")
+    #f = open("multi_manip/couples_N_{N}.txt", "w")
+    f = open("multi_manip/wip_[NON_TOCCARE]/couples_N_{N}.txt", "w")
     for c in tqdm(couples):
         f.write(str(c[0]) + " " + str(c[1]) + "\n")
     f.close()
 
     #find and write manipulations
     print("Finding and writing manipulations")
-    f = open(f"multi_manip/couples_N_{N}.txt", "r")
-    g = open(f"multi_manip/selected_couples_for_manip_N_{N}.txt", "w")
-    e = open(f"multi_manip/manipulations_N_{N}.txt", "w")
+    # f = open(f"multi_manip/couples_N_{N}.txt", "r")
+    # g = open(f"multi_manip/selected_couples_for_manip_N_{N}.txt", "w")
+    # e = open(f"multi_manip/manipulations_N_{N}.txt", "w")
+    f = open(f"multi_manip/wip_[NON_TOCCARE]/couples_N_{N}.txt", "r")
+    g = open(f"multi_manip/wip_[NON_TOCCARE]/selected_couples_for_manip_N_{N}.txt", "w")
+    e = open(f"multi_manip/wip_[NON_TOCCARE]/manipulations_N_{N}.txt", "w")
     for line in tqdm(f):
         cpl = (list(line.strip().split(" ")))
         manipulations = create_n_manipulations(train_data, int(cpl[0]), int(cpl[1]), N)
@@ -171,7 +175,28 @@ def multi_manipulation_gen(file_root, img_root_path, N):
     e.close()
     g.close()
 
+def check_output(N):
+    '''
+    checks if output is correctly saved
+    '''    
+    print("Checking output files...")
 
+    f = open(f"multi_manip/wip_[NON_TOCCARE]/couples_N_{N}.txt")
+    g = open(f"multi_manip/wip_[NON_TOCCARE]/selected_couples_for_manip_N_{N}.txt")
+    e = open(f"multi_manip/wip_[NON_TOCCARE]/manipulations_N_{N}.txt")
+
+    f_len = len(f.readlines())
+    g_len = len(g.readlines())
+    e_len = len(e.readlines())
+
+    if (f_len > 0) and (g_len > 0) and (e_len > 0) and (g_len == e_len):
+        print("Done! Check passed!")
+    else:
+        print("Check not passed")
+
+    f.close()
+    g.close()
+    e.close()
    
 if __name__ == '__main__':
     
@@ -179,3 +204,4 @@ if __name__ == '__main__':
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
     multi_manipulation_gen(file_root, img_root_path, N)
+    check_output(N)

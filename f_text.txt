@@ -14,3 +14,5 @@ abbiamo 20 000 immagina di test
 ------------------------------------------------
 1260 patch of train img totatal number of img train :è quasi 80 640
 
+il vettore di manipolazione è di lunghezza 310
+
