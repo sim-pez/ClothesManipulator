@@ -141,39 +141,20 @@ def multi_manipulation_gen(file_root, img_root_path, N):
                           transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
                       ]), 'train')
     
-
     #find couples
     print("Finding couples of Q and T")
     couples = find_couples(train_data)
     random.shuffle(couples)
 
-    #write couples
-    print("Writing couples")
-    #f = open("multi_manip/couples_N_{N}.txt", "w")
-    f = open("multi_manip/wip_[NON_TOCCARE]/couples_N_{N}.txt", "w")
-    for c in tqdm(couples):
-        f.write(str(c[0]) + " " + str(c[1]) + "\n")
-    f.close()
+    out = open(f"multi_manip/couple_manip_N_{N}.txt", "w")
 
-    #find and write manipulations
-    print("Finding and writing manipulations")
-    # f = open(f"multi_manip/couples_N_{N}.txt", "r")
-    # g = open(f"multi_manip/selected_couples_for_manip_N_{N}.txt", "w")
-    # e = open(f"multi_manip/manipulations_N_{N}.txt", "w")
-    f = open(f"multi_manip/wip_[NON_TOCCARE]/couples_N_{N}.txt", "r")
-    g = open(f"multi_manip/wip_[NON_TOCCARE]/selected_couples_for_manip_N_{N}.txt", "w")
-    e = open(f"multi_manip/wip_[NON_TOCCARE]/manipulations_N_{N}.txt", "w")
-    for line in tqdm(f):
-        cpl = (list(line.strip().split(" ")))
-        manipulations = create_n_manipulations(train_data, int(cpl[0]), int(cpl[1]), N)
+    for couple in tqdm(couples):
+        manipulations = create_n_manipulations(train_data, couple[0], couple[1], N)
         if manipulations is not None:
             manipulations_str = [str(m) for m in manipulations]
-            g.write(str(cpl[0]) + " " + str(cpl[1]) + "\n")
-            e.write(' '.join(manipulations_str) + "\n")
+            out.write(str(couple[0]) + "," + str(couple[1]) + "," + manipulations_str + "\n")
     
-    f.close()
-    e.close()
-    g.close()
+    out.close()
 
 def check_output(N):
     '''
@@ -181,27 +162,33 @@ def check_output(N):
     '''    
     print("Checking output files...")
 
-    f = open(f"multi_manip/wip_[NON_TOCCARE]/couples_N_{N}.txt")
-    g = open(f"multi_manip/wip_[NON_TOCCARE]/selected_couples_for_manip_N_{N}.txt")
-    e = open(f"multi_manip/wip_[NON_TOCCARE]/manipulations_N_{N}.txt")
+    f = open(f"multi_manip/couple_manip_N_{N}.txt")
 
-    f_len = len(f.readlines())
-    g_len = len(g.readlines())
-    e_len = len(e.readlines())
-
-    if (f_len > 0) and (g_len > 0) and (e_len > 0) and (g_len == e_len):
+    if len(f.readlines()) > 0:
         print("Done! Check passed!")
     else:
         print("Check not passed")
 
     f.close()
-    g.close()
-    e.close()
-   
+
+
+    out = open(f"multi_manip/couple_manip_N_{N}.txt", "w")
+
+    i = 0
+    for couple_str in tqdm(g):
+        manip = e.readline()
+        cpl = (list(couple_str.strip().split(" ")))
+
+        newline = cpl[0] + "," + cpl[1] + "," + manip.strip() + "\n"
+        out.write(newline)
+
+    out.close() 
+
 if __name__ == '__main__':
     
     N = 9
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
+
     multi_manipulation_gen(file_root, img_root_path, N)
     check_output(N)
