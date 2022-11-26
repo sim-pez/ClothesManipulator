@@ -79,7 +79,7 @@ print(out.shape)
 class LSTM_ManyToOne(nn.Module):
      # domanda è megio tenere i chunk? e addestrare rispetto ai chunck?
      #c_0: tensor of shape (D * \text{num\_layers}, H_{cell})(D∗num_layers,H cell)
-    def __init__(self, input_size=310,seq_len=8, output_size=4080, hidden_dim=4080, n_layers=1, drop_prob=0.5):
+    def __init__(self, input_size=151,seq_len=8, output_size=4080, hidden_dim=4080, n_layers=1, drop_prob=0.5):
         super(LSTM_ManyToOne, self).__init__()
         self.output_size = output_size
         self.n_layers = n_layers
@@ -88,6 +88,7 @@ class LSTM_ManyToOne(nn.Module):
         self.seq_len=seq_len
         
         #self.embedding = nn.Embedding(input_size,seq_num)
+        #(batch_size, seq_len,inputsize)
         self.lstm = nn.LSTM(input_size, hidden_dim, n_layers, dropout=drop_prob, batch_first=True)
         self.dropout = nn.Dropout(drop_prob)
         #self.fc = nn.Linear(hidden_dim, output_size)
@@ -113,4 +114,9 @@ class LSTM_ManyToOne(nn.Module):
         out = out.view(batch_size, -1)
         out = out[:,-1]
         return out, hidden
-
+    def init_hidden(self, batch_size):
+        #TODO 
+        weight = next(self.parameters()).data
+        hidden = (weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(device),
+                      weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(device))
+        return hidden
