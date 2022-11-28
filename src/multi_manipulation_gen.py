@@ -8,10 +8,12 @@ import numpy as np
 import h5py
 from dataloader import Data
 from pprint import pprint
+from joblib import Parallel, delayed
+import multiprocessing
 
 from utils import split_labels, flatten_labels
 
-def multi_manipulation_gen(file_root, img_root_path, N, max_manip):
+def multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode):
     '''
     Output files:
     couples.txt  ->  couples of Q and T that have the same non-zero attribute index (problably it is only for internal use)
@@ -130,44 +132,40 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip):
                 return False
                 
         return True
-    '''
-    dataset for testing purpouses
-
-    #file_root = 'mini_ds/splits/Shopping100k'
-    #img_root_path = 'mini_ds/Images'
-    
-    '''
-    #loat attributes
+    #load attributes
     print('Loading attributes')
-    train_data = Data(file_root,  img_root_path, 
+    #train set
+    if mode == 'train':
+        data = Data(file_root,  img_root_path, 
+                          transforms.Compose([
+                              transforms.Resize((C.TRAIN_INIT_IMAGE_SIZE, C.TRAIN_INIT_IMAGE_SIZE)),
+                              transforms.RandomHorizontalFlip(),
+                              transforms.CenterCrop(C.TARGET_IMAGE_SIZE),
+                              transforms.ToTensor(),
+                              transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
+                          ]), 'train')
+    elif mode == 'test':
+        #validation set
+        data = Data(file_root,  img_root_path,
                       transforms.Compose([
-                          transforms.Resize((C.TRAIN_INIT_IMAGE_SIZE, C.TRAIN_INIT_IMAGE_SIZE)),
-                          transforms.RandomHorizontalFlip(),
-                          transforms.CenterCrop(C.TARGET_IMAGE_SIZE),
+                          transforms.Resize((C.TARGET_IMAGE_SIZE, C.TARGET_IMAGE_SIZE)),
                           transforms.ToTensor(),
                           transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
-                      ]), 'train')
-    '''
-    #validation set
-    valid_data = Data(file_root,  img_root_path,
-                  transforms.Compose([
-                      transforms.Resize((C.TARGET_IMAGE_SIZE, C.TARGET_IMAGE_SIZE)),
-                      transforms.ToTensor(),
-                      transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
-                  ]), 'test')
-    '''
+                      ]), 'test')
+    else:
+        print("Argument mode not valid")
     
-    features_train = np.load('eval_out/feat_train.npy')
-    labels = train_data.label_data
-    attr_num = train_data.attr_num
+    features_data = np.load(f'eval_out/feat_{mode}.npy')
+    labels = data.label_data
+    attr_num = data.attr_num
 
     print("Finding triplets")
-    triplets = []
-    t_shuffled_idx = np.array([i for i in range(len(labels))])
-        
-    for q_id in tqdm(range(len(labels))):
+
+    def find_triples(q_id, labels, N, attr_num, max_manip):
+        found_triplets = []
         count = 0
         q_labels = labels[q_id]
+        t_shuffled_idx = np.array([i for i in range(len(labels))])
         random.shuffle(t_shuffled_idx)
 
         for t_id in t_shuffled_idx:
@@ -175,55 +173,50 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip):
             if q_id != t_id and is_couple_match(q_labels, t_labels, N, attr_num):
                 manipulations = create_n_manipulations(q_labels, t_labels, N, attr_num)
                 if manipulations is not None:
-                    triplets.append((features_train[q_id], features_train[t_id], manipulations))
+                    found_triplets.append((features_data[q_id], features_data[t_id], manipulations))
                     count += 1
                     if count >= max_manip:
                         break
+        return found_triplets
 
-    del train_data, features_train
+    num_cores = multiprocessing.cpu_count()
+    triplets_unflattened = Parallel(n_jobs=num_cores)(delayed(find_triples)(q_id, labels, N, attr_num, max_manip) for q_id in tqdm(range(len(labels))))
+    
+    del data, features_data
 
-    #stringify triplets
-    print("writing triplets")
-    triplets_stringified = []
-    for triplet in triplets:
-        
-        triplet_str = ['_'.join(map(str, list)) for list in triplet]
-        triplet_str = '#'.join(triplet_str)
-        triplets_stringified.append(triplet_str)
+
+    #flatten triplets
+    print("processing data...")
+    triplets = []
+    for triplet_list in triplets_unflattened:
+        for triplet in triplet_list:
+            triplets.append(triplet) 
+    del triplets_unflattened
+    
+    q = np.array([triple[0] for triple in triplets])
+    t = np.array([triple[1] for triple in triplets])
+    manip = np.array([triple[2] for triple in triplets])
+    del triplets
+
 
     #save triplets
-    hf = h5py.File(f'multi_manip/train/triplets_N_{N}.h5', 'w')
-    hf.create_dataset('triplets', data=triplets_stringified)
+    print("writing triplets")
+    hf = h5py.File(f'multi_manip/{mode}/triplets_N_{N}.h5', 'w')
+    hf.create_dataset('q', data=q)
+    hf.create_dataset('t', data=t)
+    hf.create_dataset('manip', data=manip)
     hf.close()
 
     print("done!")
-    '''
-    #to reopen file:
-    hf = h5py.File(f'multi_manip/train/triplets_N_{N}.h5', 'r')
-    ds = hf['triplets']
 
-    def string2list(str_line):
-        str_triplet_list = str_line.decode("utf-8").split("#")
-        a = [float(e) for e in str_triplet_list[0].split("_")]
-        b = [float(e) for e in str_triplet_list[1].split("_")]
-        c = [int(e) for e in str_triplet_list[2].split("_")]
-        return [np.array(a, dtype='float32'), np.array(b, dtype='float32'), np.array(c)]
-
-    triplets = []
-    for line in ds:
-        triplet = string2list(line)
-        triplets.append(triplet)
-
-    hf.close()
-    '''
     
-    #TODO fai sia train che test set
-
 
 if __name__ == '__main__':
     
     N = 8
+    mode = 'test'
     max_manip = 3
+
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
 
@@ -231,6 +224,17 @@ if __name__ == '__main__':
     #file_root = 'mini_ds/splits/Shopping100k'
     #img_root_path = 'mini_ds/Images'
     
-    multi_manipulation_gen(file_root, img_root_path, N, max_manip) #TODO fai sia train che test
+    multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode)
 
-    
+    '''
+    #to reopen file:
+    hf = h5py.File(f'multi_manip/{mode}/triplets_N_{N}.h5', 'r')
+    for line in hf['q']:
+        print(line)
+    for line in hf['t']:
+        print(line)
+    for line in hf['manip']:
+        print(line)
+    hf.close()
+    '''
+
