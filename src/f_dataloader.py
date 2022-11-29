@@ -4,10 +4,14 @@ import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import h5py
+import random
+import parameters as par
+from tqdm import tqdm
+from f_utils import split_manip
 
 class Data_Q_T(data.Dataset):
 
-    def __init__(self, data_root, filename_data, mode='train',shuffle=True):
+    def __init__(self, filename_data,shuffle=True):
         """
         Read file Couples_N_8.txt,maipolations_N_8.txt
 
@@ -17,28 +21,38 @@ class Data_Q_T(data.Dataset):
         divider usanndo 
         """
         super(Data_Q_T, self).__init__()
-        self.data_root = data_root 
-        self.filename_data = filename_data
-        self.data_ids=self._load_h5_file_with_data(self.filename_data)
-        self.mode = mode
-        self.shuffle = shuffle
         
-    def __getitem__(self, index):
-
-        inputs = self.inputs['data'][index]#return the data with such index.
-
+        self.filename_data = filename_data
+        self.hf=self._load_h5_file_with_data(self.filename_data)
+        self.shuffle = shuffle
+        print("Dataset is loaded",self.hf['manip'].shape[0])
+        
+        
+    def __getitem__(self, indexes):
+        
+        q=self.hf['q'][indexes]
+        t=self.hf['t'][indexes]
+        manip=self.hf['manip'][indexes]
+        
         if self.shuffle:
-            inputs = inputs[torch.randperm(len(index))] # shuffle the data. data at index[0,1,2]=[2,0,1]
+            ids=np.arange(q.shape[0])
+            np.random.shuffle(ids)
+            q=q[ids]
+            t=t[ids]
+            manip=manip[ids]
+        
+        manip_list = split_manip(manip)
 
-        return (inputs,mani_vec, target)
+        return (q, t, manip_list)
+
+
     def _load_h5_file_with_data(self, file_name):
-        path = os.path.join(self.dir_path, file_name)
-        file = h5py.File(path)
-        key = list(file.keys())[0]
-        data = file[key]
-        return dict(file=file, data=data)
+       
+        hf = h5py.File(file_name)
+        return hf
+
     def __len__(self):
-        return self.inputs['data'].shape[0]
+        return self.hf['manip'].shape[0]
 
 
 class RandomBatchSampler(data.Sampler):
@@ -63,7 +77,7 @@ class RandomBatchSampler(data.Sampler):
     def __iter__(self):
         for id in self.batch_ids:
             idx = torch.arange(id * self.batch_size, (id + 1) * self.batch_size)
-            for index in idx:
+            for index in idx:# @Fatemah #TODO forse non serve questa for
                 yield int(index)
         if int(self.n_batches) < self.n_batches:
             idx = torch.arange(int(self.n_batches) * self.batch_size, self.dataset_length)
@@ -93,3 +107,20 @@ def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None):
         dataset, batch_size=None,  # must be disabled when using samplers
         sampler=data.BatchSampler(RandomBatchSampler(dataset, batch_size), batch_size=batch_size, drop_last=drop_last)
     )
+
+if __name__=="__main__":
+    test_data =Data_Q_T(par.DATA_TEST,shuffle=True)
+    test_loader=fast_loader(test_data,batch_size=100)
+    for i, sample in enumerate(tqdm(test_loader)):
+        qFeat,tFeat,mani_vects = sample
+       
+        h_0=tuple([ qFeat for k in range (1)])
+        h_0=torch.stack(h_0,dim=0)
+       
+        mani_vects=torch.unsqueeze(mani_vects,dim=1)
+        print(h_0.shape)
+        print(mani_vects.shape)
+        if i>1:
+            break
+           
+           
