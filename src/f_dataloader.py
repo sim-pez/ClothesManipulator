@@ -7,7 +7,8 @@ import h5py
 import random
 import parameters as par
 from tqdm import tqdm
-from f_utils import split_manip
+import pickle
+#from f_utils import get_manip_array
 
 class Data_Q_T(data.Dataset):
 
@@ -24,32 +25,53 @@ class Data_Q_T(data.Dataset):
         
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
+        self.cut_index, self.split_index=self._load_cut_index()
+        
         self.shuffle = shuffle
-        print("Dataset is loaded",self.hf['manip'].shape[0])
+        print("Dataset is loaded")
         
         
     def __getitem__(self, indexes):
         
         q=self.hf['q'][indexes]
         t=self.hf['t'][indexes]
-        manip=self.hf['manip'][indexes]
+        manips=self.hf['manip'][indexes]
         
         if self.shuffle:
             ids=np.arange(q.shape[0])
             np.random.shuffle(ids)
             q=q[ids]
             t=t[ids]
-            manip=manip[ids]
+            manips=manips[ids]
         
-        manip_list = split_manip(manip)
+        manips_separated = torch.tensor([self._get_manip_array(x) for x in manips])
 
-        return (q, t, manip_list)
+        return (q, t, manips_separated)
 
 
     def _load_h5_file_with_data(self, file_name):
        
         hf = h5py.File(file_name)
         return hf
+    def _load_cut_index(self):
+        with open(par.FILE_CUT_INDEX, 'rb') as fp:
+            cut_index = pickle.load(fp)
+            fp.close()
+        with open(par.FILE_SPLIT_INDEX, 'rb') as fp:
+            split_index = pickle.load(fp)
+            fp.close()
+        return cut_index,split_index
+    
+    def _get_manip_array(self,v):
+        Nsplit=np.split(v,self.split_index[:-1])# 12 list of attr_legnth
+        manip_array=np.zeros((12,151),dtype=int)
+        
+        for j in range(manip_array.shape[0]):
+            
+            start,end=self.cut_index[j][0],self.cut_index[j][1]
+            
+            manip_array[j][start:end]=Nsplit[j] #change the part of th matrix relative to attribut j
+        return manip_array[~np.all(manip_array == 0, axis=1)] #drop the zero rows
 
     def __len__(self):
         return self.hf['manip'].shape[0]
@@ -113,14 +135,8 @@ if __name__=="__main__":
     test_loader=fast_loader(test_data,batch_size=100)
     for i, sample in enumerate(tqdm(test_loader)):
         qFeat,tFeat,mani_vects = sample
-       
-        h_0=tuple([ qFeat for k in range (1)])
-        h_0=torch.stack(h_0,dim=0)
-       
-        mani_vects=torch.unsqueeze(mani_vects,dim=1)
-        print(h_0.shape)
+        
+        #print(h_0.shape)
         print(mani_vects.shape)
-        if i>1:
-            break
-           
-           
+
+        break

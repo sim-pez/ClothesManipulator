@@ -1,5 +1,5 @@
 #@Fatemah Alhamdoosh
-#@imome Pezzulla
+#@simome Pezzulla
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: CC-BY-NC-4.0
 
@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from dataloader import Data
-from model import Extractor
+from f_model import Extractor
 from argument_parser import add_base_args, add_eval_args
 
 import constants as C

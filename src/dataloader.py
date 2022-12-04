@@ -7,7 +7,7 @@ from PIL import Image, ImageFile
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from utils import get_idx_label
-
+import parameters as par
 
 class DataQuery(data.Dataset):
     """
@@ -36,13 +36,9 @@ class DataQuery(data.Dataset):
             self.img_transform = transforms.ToTensor()
 
         self.img_data, self.label_data, self.ref_idxs, self.query_inds, self.attr_num = self._load_dataset()
-        #self.fea_Q, self.fea_T,self.vec_manip, 
-        #input
-        #Feature di Q,T, label di image Q,img T, restuire manipolation vector.
+     
+       
 
-        #output
-        #vettore di manipolazione, che corrisponde a Q,T img, 
-        #index of Q img,index of img T
 
     def _load_dataset(self):
         with open(os.path.join(self.file_root, "imgs_%s.txt" % self.mode)) as f:
@@ -92,7 +88,6 @@ class Data(data.Dataset):
         self.img_transform = img_transform
         self.img_root_path = img_root_path
         self.mode = mode
-
         if not self.img_transform:
             self.img_transform = transforms.ToTensor()
 
@@ -108,7 +103,7 @@ class Data(data.Dataset):
         attr_num = np.loadtxt(os.path.join(self.file_root, "attr_num.txt"), dtype=int)
 
         return img_data, label_data, attr_num
-
+    
     def __len__(self):
         return self.label_data.shape[0]
 

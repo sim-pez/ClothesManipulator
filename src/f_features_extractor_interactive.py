@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from dataloader import Data
-from model import Extractor
+from f_model import Extractor
 from argument_parser import add_base_args, add_eval_args
 
 import constants as C
@@ -66,13 +66,20 @@ with torch.no_grad():
     for i, (img, _) in enumerate(tqdm(gallery_loader)):
         img = img.cuda()
         dis_feat, _ = model(img)
-        print(len (dis_feat[0]))
-        gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
+        dis_feat=torch.cat(dis_feat, 1).squeeze()
+        print (dis_feat)
+        print(len(dis_feat),len(dis_feat[0])) #"12 ,64,340"
+        
+        #gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
+        break
 dim_chunk=340
-gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1,dim_chunk * len(gallery_data.attr_num))    
-np.save(os.path.join("/home/falhamdoosh/disentagledFeaturesExtractor/eval_out", 'gallery_feats_train.npy'), np.concatenate(gallery_feat, axis=0))
-print('Saved indexed features at /gallery_feats.npy')
-
+#gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1,dim_chunk * len(gallery_data.attr_num))  
+"""
+ 
+print("shape of gallery_feat_test: {}".format(len(gallery_feat)))
+np.save("/home/falhamdoosh/disentagledFeaturesExtractor/eval_out/feat_train.npy", gallery_feat)
+print('Saved indexed features at /feat_train.npy')
+""" 
 #%%
 
 #%%

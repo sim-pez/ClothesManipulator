@@ -179,10 +179,10 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode):
                         break
         return found_triplets
 
-    num_cores = multiprocessing.cpu_count()
+    num_cores = multiprocessing.cpu_count() # @fate perchè non usi gpu? @simo sì la posso usare ma quando l'ho fatto non pensavo fosse necessario
     triplets_unflattened = Parallel(n_jobs=num_cores)(delayed(find_triples)(q_id, labels, N, attr_num, max_manip) for q_id in tqdm(range(len(labels))))
     
-    del data, features_data
+    del data, features_data 
 
 
     #flatten triplets
@@ -192,6 +192,8 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode):
         for triplet in triplet_list:
             triplets.append(triplet) 
     del triplets_unflattened
+
+    random.shuffle(triplets)
     
     q = np.array([triple[0] for triple in triplets])
     t = np.array([triple[1] for triple in triplets])
@@ -213,8 +215,8 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode):
 
 if __name__ == '__main__':
     
-    N = 8
-    mode = 'test'
+    N = 9
+    mode = 'train'
     max_manip = 3
 
     file_root = 'splits/Shopping100k'
@@ -224,17 +226,25 @@ if __name__ == '__main__':
     #file_root = 'mini_ds/splits/Shopping100k'
     #img_root_path = 'mini_ds/Images'
     
-    multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode)
+    #multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode)
 
-    '''
+    
     #to reopen file:
-    hf = h5py.File(f'multi_manip/{mode}/triplets_N_{N}.h5', 'r')
+    hf = h5py.File(f'multi_manip/train/triplets_N_{N}.h5', 'r')
+    '''
     for line in hf['q']:
         print(line)
+        break
     for line in hf['t']:
         print(line)
+        break
     for line in hf['manip']:
         print(line)
-    hf.close()
+        break
     '''
+    q = hf['q'][0]
+    t = hf['t'][0]
+
+    hf.close()
+
 
