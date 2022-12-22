@@ -114,7 +114,7 @@ if __name__=="__main__":
     
     loss=torch.nn.MSELoss().cuda()
     trainer=Trainer(gpu=0,data_loader_train=train_loader, data_loader_test=test_loader,
-    loss=loss,model=model,num_epochs=3)
+    loss=loss,model=model,num_epochs=10)
     trainer.run()
     
 

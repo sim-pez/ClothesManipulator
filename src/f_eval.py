@@ -25,23 +25,18 @@ import torch.nn.functional as F
 if __name__ == '__main__':
     #load_pretrained_model
     mode="test"
-    query_feat=np.load(par.FEAT_TEST)
-    query_labels = np.loadtxt(os.path.join(par.ROOT_DIR,"split/Shopping100k/labels_test"), dtype=int)
-
+    gallery_feat=np.load(par.FEAT_TEST)
+    
     test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
     gallery_loader=fast_loader(test_data,batch_size=32,drop_last=False,shuffl=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
     loss=torch.nn.MSELoss().cuda()
-    last_train="12-22-10:54"
+    last_train="12-22-13:33"
     path_pretrained_model=os.path.join(par.LOG_DIR,"{last_train}/best_model.pkl".format(last_train=last_train))
     model.load_state_dict(torch.load(path_pretrained_model))
     model.cuda()
     model.eval()
-    #indexing the gallery
     
-    hf = h5py.File(par.DATA_TEST)
-    t_id=hf['t_idx']
-    t_labels=query_labels[t_id]
     predicted_tfeat = []
 
     with torch.no_grad():
@@ -54,53 +49,43 @@ if __name__ == '__main__':
     np.save(os.path.join(par.DATA_TEST_DIR, 'predicted_tfeats.npy'),predicted_tfeat )
     print('Saved indexed features at {dir}/predicted_tfeats.npy'.format(dir=par.DATA_TEST_DIR))
     
-    assert (t_labels.shape[0] == predicted_tfeat.shape[0])
-
-  
-
-    with torch.no_grad():
-        for i, (img, indicator) in enumerate(tqdm(query_loader)):
-            indicator = indicator.float()
-            if not args.use_cpu:
-                img = img.cuda()
-                indicator = indicator.cuda()
-
-            dis_feat, _ = model(img)
-            residual_feat = lstm(indicator)
-            feat_manip = torch.cat(dis_feat, 1) + residual_feat
-
-            query_fused_feats.append(F.normalize(feat_manip).cpu().numpy())
-
-    if args.save_matrix:
-        np.save(os.path.join(args.feat_dir, 'query_fused_feats.npy'), np.concatenate(query_fused_feats, axis=0))
-        print('Saved query features at {dir}/query_fused_feats.npy'.format(dir=args.feat_dir))
+     
 
     #evaluate the top@k results
-    gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1, args.dim_chunk * len(gallery_data.attr_num))
-    fused_feat = np.array(np.concatenate(query_fused_feats, axis=0)).reshape(-1, args.dim_chunk * len(gallery_data.attr_num))
-    dim = args.dim_chunk * len(gallery_data.attr_num)  # dimension
+    dim = 4080  # dimension
     num_database = gallery_feat.shape[0]  # number of images in database
-    num_query = fused_feat.shape[0]  # number of queries
+    num_query = predicted_tfeat.shape[0]  # number of 
+    print("Num of image in database is {n1}, Num of query img is {n2}".format(n1=num_database,n2=num_query))
 
     database = gallery_feat
-    queries = fused_feat
+    queries = predicted_tfeat
     index = faiss.IndexFlatL2(dim)
     index.add(database)
-    k = args.top_k
+    k = 30
     _, knn = index.search(queries, k)
 
     #load the GT labels for all gallery images
-    label_data = np.loadtxt(os.path.join(file_root, 'labels_test.txt'), dtype=int)
-
+    label_data = np.loadtxt(os.path.join(par.ROOT_DIR,"splits/Shopping100k/labels_test.txt"), dtype=int)
+    #load the GT labels of queries images
+    hf = h5py.File(par.DATA_TEST)
+    t_id=hf['t_idx']
+    query_labels=label_data[t_id]
+    
+    assert (query_labels.shape[0] == predicted_tfeat.shape[0])
+    #TODO essendo l'immagine target è stata usata più volte nel data set,
+    #  ogni volta partendo da un'immagine di query diversa,
+    #sarebbe utile confrontare quanto le stima dei feat_target che corrispondono
+    #  allo stesso target sono simili tra loro
     #compute top@k acc
     hits = 0
-    for q in tqdm(range(num_query)):
-        neighbours_idxs = knn[q]
+    for q in tqdm(range(num_query)): # itera i dati predicted_tfeat
+        neighbours_idxs = knn[q]# gli indici dei k-feat più simili alla predicted_tfeat[q]
         for n_idx in neighbours_idxs:
-            if (label_data[n_idx] == gt_labels[q]).all():
+            if (label_data[n_idx] == query_labels[q]).all():
                 hits += 1
                 break
     print('Top@{k} accuracy: {acc}'.format(k=k, acc=hits/num_query))
+"""
 
     #compute NDCG
     ndcg = []
@@ -146,20 +131,4 @@ if __name__ == '__main__':
                                                                                           ndcg=np.mean(ndcg),
                                                                                           ndcg_t=np.mean(ndcg_target),
                                                                                           ndcg_o=np.mean(ndcg_others)))
-
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    torch.cuda.empty_cache()
-    # load dataset
-    print('Loading dataset...')
-    train_data =Data_Q_T(par.DATA_TRAIN,shuffle=True)
-    test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
-    
-    train_loader=fast_loader(train_data,batch_size=32)
-    test_loader=fast_loader(test_data,batch_size=32,drop_last=False)
-    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
-    # create the folder to save log, checkpoints and args config
-    
-    loss=torch.nn.MSELoss().cuda()
-    trainer=Trainer(gpu=0,data_loader_train=train_loader, data_loader_test=test_loader,
-    loss=loss,model=model,num_epochs=10)
-    trainer.run()
+"""
