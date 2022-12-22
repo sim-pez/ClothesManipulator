@@ -21,7 +21,8 @@ class Trainer():
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01, betas=(0.9, 0.999))
         self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 40, 0.1)
         self.num_epochs=num_epochs
-        self.log_dir=datetime.datetime.now().strftime("%m-%d-%H:%M")
+        self.date=datetime.datetime.now().strftime("%m-%d-%H:%M")
+        self.log_dir=os.path.join(par.LOG_DIR,self.date)
         os.makedirs(self.log_dir)
         self.cpu=False
         
@@ -36,7 +37,7 @@ class Trainer():
         avg_loss = 0
         self.model.train() #set the mode to train so it can update gradients
         for i, sample in enumerate(tqdm(self.data_loader_train)):
-            qFeat, tFeat, mani_vects = sample
+            qFeat, tFeat, mani_vects,id_t = sample
             tFeat.cuda()
             self.model.zero_grad()
             ####chiama la funzione forward in model
@@ -53,19 +54,26 @@ class Trainer():
     def eval(self):
         self.model.eval()
         avg_loss=0
-        for i, sample in enumerate(tqdm(self.data_loader_test)):
-            qFeat,tFeat,mani_vects = sample
-            tFeat.cuda()
-            out,hidden = self.model(mani_vects,qFeat)
-            out.cuda()
-            loss=self.loss(out,tFeat)#(batch_size,output_dim    
-            print (loss.item())          
-            avg_loss += loss.item()
-            torch.cuda.empty_cache() 
+        with torch.no_grad():
+            for i, sample in enumerate(tqdm(self.data_loader_test)):
+                qFeat,tFeat,mani_vects,id_t = sample
+                tFeat.cuda()
+                out,hidden = self.model(mani_vects,qFeat)
+                out.cuda()
+                loss=self.loss(out,tFeat)#(batch_size,output_dim    
+                print (loss.item())          
+                avg_loss += loss.item()
+                torch.cuda.empty_cache() 
         return avg_loss/(i+1)
+    def calc_accuracy(self,target,predicted):
+        """
+        a function which calculate accuracy between lable of target, with label of the k=1 knearst-neibors features
+        """
+
+        pass
 
     def run(self):
-        previous_best_avg_test_loss = 0.0
+        previous_best_avg_test_loss = 1000000
         for epoch in range(self.num_epochs):
             avg_train_loss = self.train()
             avg_test_loss = self.eval()
@@ -80,8 +88,10 @@ class Trainer():
             print('Saved checkpoints at {dir}/ckpt_{epoch}.pkl'.format(dir=self.log_dir, epoch=epoch+1))
 
             if avg_test_loss < previous_best_avg_test_loss:
+                with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
+                    f.write("saved_a new best_model\n ")
                 torch.save(self.model.state_dict(), os.path.join(self.log_dir, "best_model.pkl"))
-                print('Best model in {dir}/extractor_best.pkl'.format(dir=self.log_dir))
+                print('Best model in {dir}/best_model.pkl'.format(dir=self.log_dir))
                 previous_best_avg_test_loss = avg_test_loss
 
             self.lr_scheduler.step()
@@ -97,14 +107,14 @@ if __name__=="__main__":
     train_data =Data_Q_T(par.DATA_TRAIN,shuffle=True)
     test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
     
-    train_loader=fast_loader(train_data,batch_size=32)
-    test_loader=fast_loader(test_data,batch_size=32,drop_last=False)
+    train_loader=fast_loader(train_data,batch_size=32,shuffl=True)
+    test_loader=fast_loader(test_data,batch_size=32,drop_last=False,shuffl=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
     # create the folder to save log, checkpoints and args config
     
     loss=torch.nn.MSELoss().cuda()
     trainer=Trainer(gpu=0,data_loader_train=train_loader, data_loader_test=test_loader,
-    loss=loss,model=model,num_epochs=10)
+    loss=loss,model=model,num_epochs=3)
     trainer.run()
     
 

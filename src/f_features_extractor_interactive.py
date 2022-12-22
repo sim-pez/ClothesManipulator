@@ -67,25 +67,19 @@ with torch.no_grad():
         img = img.cuda()
         dis_feat, _ = model(img)
         dis_feat=torch.cat(dis_feat, 1).squeeze()
-        print (dis_feat)
-        print(len(dis_feat),len(dis_feat[0])) #"12 ,64,340"
+       # print (dis_feat)
+        #print(len(dis_feat),len(dis_feat[0])) #"12 ,64,340"
         
-        #gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
-        break
+        gallery_feat.append(F.normalize(torch.cat(dis_feat, 1)).squeeze().cpu().numpy())
+        
 dim_chunk=340
-#gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1,dim_chunk * len(gallery_data.attr_num))  
-"""
- 
+gallery_feat = np.concatenate(gallery_feat, axis=0).reshape(-1,dim_chunk * len(gallery_data.attr_num))  
+#%%
+
 print("shape of gallery_feat_test: {}".format(len(gallery_feat)))
 np.save("/home/falhamdoosh/disentagledFeaturesExtractor/eval_out/feat_train.npy", gallery_feat)
 print('Saved indexed features at /feat_train.npy')
-""" 
-#%%
 
-#%%
-
-
-#%%
 """
 export DATASET_PATH="dati/Images" /path/to/dataset/folder/that/contain/img/subfolder"
 export DATASET_NAME="Shopping100k"

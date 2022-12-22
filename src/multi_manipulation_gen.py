@@ -179,7 +179,7 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode):
                         break
         return found_triplets
 
-    num_cores = multiprocessing.cpu_count() # @fate perchè non usi gpu? @simo sì la posso usare ma quando l'ho fatto non pensavo fosse necessario
+    num_cores = multiprocessing.cpu_count()
     triplets_unflattened = Parallel(n_jobs=num_cores)(delayed(find_triples)(q_id, labels, N, attr_num, max_manip) for q_id in tqdm(range(len(labels))))
     
     del data, features_data 
@@ -215,8 +215,8 @@ def multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode):
 
 if __name__ == '__main__':
     
-    N = 9
-    mode = 'train'
+    N = 8
+    mode = 'test'
     max_manip = 3
 
     file_root = 'splits/Shopping100k'
@@ -228,23 +228,56 @@ if __name__ == '__main__':
     
     #multi_manipulation_gen(file_root, img_root_path, N, max_manip, mode)
 
-    
-    #to reopen file:
-    hf = h5py.File(f'multi_manip/train/triplets_N_{N}.h5', 'r')
-    '''
-    for line in hf['q']:
-        print(line)
-        break
-    for line in hf['t']:
-        print(line)
-        break
-    for line in hf['manip']:
-        print(line)
-        break
-    '''
-    q = hf['q'][0]
-    t = hf['t'][0]
+    # to reopen file:
+    # hf = h5py.File(f'multi_manip/train/triplets_N_{N}.h5', 'r')
+    # q = hf['q'][0]
+    # t = hf['t'][0]
+    # hf.close()
 
+    
+    print('Loading attributes')
+    train_data = Data(file_root,  img_root_path, 
+                          transforms.Compose([
+                              transforms.Resize((C.TRAIN_INIT_IMAGE_SIZE, C.TRAIN_INIT_IMAGE_SIZE)),
+                              transforms.RandomHorizontalFlip(),
+                              transforms.CenterCrop(C.TARGET_IMAGE_SIZE),
+                              transforms.ToTensor(),
+                              transforms.Normalize(mean=C.IMAGE_MEAN, std=C.IMAGE_STD)
+                          ]), 'train')
+
+    labels = train_data.label_data
+    attr_num = train_data.attr_num
+
+    features_list = np.load(f'eval_out/feat_train.npy')
+
+    hf = h5py.File(f'multi_manip/train/triplets_N_8.h5', 'a')
+
+    q_idx = np.empty(len(hf['q']), dtype=int)
+    t_idx = np.empty(len(hf['t']), dtype=int)
+
+    print(f"finding {len(hf['q'])} indexes")
+
+    for i, (q, t) in tqdm(enumerate(zip(hf['q'], hf['t']))):
+        q_idx[i] = np.where((features_list == q).all(axis=1))[0][0]
+        t_idx[i] = np.where((features_list == t).all(axis=1))[0][0]
+
+
+    #save triplets
+    print("writing triplets")
+    hf.create_dataset('q_idx', data=q_idx)
+    hf.create_dataset('t_idx', data=t_idx)
     hf.close()
+
+    print('done')
+      
+
+
+
+
+
+
+
+
+
 
 

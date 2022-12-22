@@ -35,6 +35,7 @@ class Data_Q_T(data.Dataset):
         
         q=self.hf['q'][indexes]
         t=self.hf['t'][indexes]
+        id_t=self.hf['t_idx'][indexes]
         manips=self.hf['manip'][indexes]
         
         if self.shuffle:
@@ -43,10 +44,12 @@ class Data_Q_T(data.Dataset):
             q=q[ids]
             t=t[ids]
             manips=manips[ids]
+            id_t=id_t[ids]
         
         manips_separated = torch.tensor([self._get_manip_array(x) for x in manips])
 
-        return (q, t, manips_separated)
+
+        return (q, t, manips_separated,id_t)
 
 
     def _load_h5_file_with_data(self, file_name):
@@ -87,11 +90,13 @@ class RandomBatchSampler(data.Sampler):
     :type batch_size: int
     :returns: generator object of shuffled batch indices
     """
-    def __init__(self, dataset, batch_size):
+    def __init__(self, dataset, batch_size,shuffl=True):
         self.batch_size = batch_size
         self.dataset_length = len(dataset)
         self.n_batches = self.dataset_length / self.batch_size
-        self.batch_ids = torch.randperm(int(self.n_batches))
+        self.batch_ids=torch.arange(0,int(self.n_batches))
+        if shuffl==True:
+            self.batch_ids = torch.randperm(int(self.n_batches))
 
     def __len__(self):
         return self.batch_size
@@ -107,7 +112,7 @@ class RandomBatchSampler(data.Sampler):
                 yield int(index)
 
 
-def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None):
+def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl=True):
     """Implements fast loading by taking advantage of .h5 dataset
     The .h5 dataset has a speed bottleneck that scales (roughly) linearly with the number
     of calls made to it. This is because when queries are made to it, a search is made to find
@@ -127,16 +132,19 @@ def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None):
     """
     return data.DataLoader(
         dataset, batch_size=None,  # must be disabled when using samplers
-        sampler=data.BatchSampler(RandomBatchSampler(dataset, batch_size), batch_size=batch_size, drop_last=drop_last)
+        sampler=data.BatchSampler(RandomBatchSampler(dataset, batch_size,shuffl), batch_size=batch_size, drop_last=drop_last)
     )
 
 if __name__=="__main__":
-    test_data =Data_Q_T(par.DATA_TEST,shuffle=True)
-    test_loader=fast_loader(test_data,batch_size=100)
+    test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
+    test_loader=fast_loader(test_data,batch_size=10,shuffl=False)
     for i, sample in enumerate(tqdm(test_loader)):
-        qFeat,tFeat,mani_vects = sample
+        qFeat,tFeat,mani_vects,id_t = sample
         
         #print(h_0.shape)
-        print(mani_vects.shape)
+        print(id_t[0])
+
+
+        
 
         break
