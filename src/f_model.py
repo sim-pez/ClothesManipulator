@@ -8,6 +8,7 @@ import torchvision
 from f_dataloader import Data_Q_T,fast_loader
 import parameters as par
 from tqdm import tqdm
+
 class Extractor(nn.Module):
     """
     Extract attribute-specific embeddings and add attribute predictor for each.
@@ -120,7 +121,7 @@ class LSTM_ManyToOne(nn.Module):
         return hidden
 
 if __name__=="__main__":
-    test_data =Data_Q_T(par.DATA_TEST,shuffle=True)
+    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=True)
     test_loader=fast_loader(test_data,batch_size=1)
     model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=2,drop_prob=0.5)
     model.cuda()

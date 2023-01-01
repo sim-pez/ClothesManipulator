@@ -27,11 +27,11 @@ if __name__ == '__main__':
     mode="test"
     gallery_feat=np.load(par.FEAT_TEST)
     
-    test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
+    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
     gallery_loader=fast_loader(test_data,batch_size=32,drop_last=False,shuffl=False)
-    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
+    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=2,drop_prob=0.5)
     loss=torch.nn.MSELoss().cuda()
-    last_train="12-22-13:33"
+    last_train="12-23-09:18"
     path_pretrained_model=os.path.join(par.LOG_DIR,"{last_train}/best_model.pkl".format(last_train=last_train))
     model.load_state_dict(torch.load(path_pretrained_model))
     model.cuda()
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     queries = predicted_tfeat
     index = faiss.IndexFlatL2(dim)
     index.add(database)
-    k = 30
+    k = 50
     _, knn = index.search(queries, k)
 
     #load the GT labels for all gallery images
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     #  ogni volta partendo da un'immagine di query diversa,
     #sarebbe utile confrontare quanto le stima dei feat_target che corrispondono
     #  allo stesso target sono simili tra loro
+    #si poù confrontare anche a livello di attributi
     #compute top@k acc
     hits = 0
     for q in tqdm(range(num_query)): # itera i dati predicted_tfeat
@@ -84,51 +85,36 @@ if __name__ == '__main__':
             if (label_data[n_idx] == query_labels[q]).all():
                 hits += 1
                 break
-    print('Top@{k} accuracy: {acc}'.format(k=k, acc=hits/num_query))
-"""
+
+    print("Total hits",hits)
+    print('Top@{k} accuracy: {acc}'.format(k=k, acc=(hits/num_query)*100))
 
     #compute NDCG
     ndcg = []
-    ndcg_target = []  # consider changed attribute only
-    ndcg_others = []  # consider other attributes
+   # ndcg_target = []  # consider changed attribute only
+    #ndcg_others = []  # consider other attributes
 
     for q in tqdm(range(num_query)):
         rel_scores = []
-        target_scores = []
-        others_scores = []
+       # target_scores = []
+        #others_scores = []
 
         neighbours_idxs = knn[q]
-        indicator = query_inds[q]
-        target_attr = get_target_attr(indicator, gallery_data.attr_num)
-        target_label = split_labels(gt_labels[q], gallery_data.attr_num)
-
+       # indicator = query_inds[q]
+        #target_attr = get_target_attr(indicator, gallery_data.attr_num)
+        attr_num=np.loadtxt("/home/falhamdoosh/disentagledFeaturesExtractor/splits/Shopping100k/attr_num.txt",dtype=int)
+        target_label = split_labels(query_labels[q],attr_num)
         for n_idx in neighbours_idxs:
-            n_label = split_labels(label_data[n_idx], gallery_data.attr_num)
+            n_label = split_labels(label_data[n_idx], attr_num)
             # compute matched_labels number
             match_cnt = 0
             others_cnt = 0
-
             for i in range(len(n_label)):
                 if (n_label[i] == target_label[i]).all():
                     match_cnt += 1
-                if i == target_attr:
-                    if (n_label[i] == target_label[i]).all():
-                        target_scores.append(1)
-                    else:
-                        target_scores.append(0)
-                else:
-                    if (n_label[i] == target_label[i]).all():
-                        others_cnt += 1
-
-            rel_scores.append(match_cnt / len(gallery_data.attr_num))
-            others_scores.append(others_cnt / (len(gallery_data.attr_num) - 1))
-
+            rel_scores.append(match_cnt / len(attr_num))
         ndcg.append(compute_NDCG(np.array(rel_scores)))
-        ndcg_target.append(compute_NDCG(np.array(target_scores)))
-        ndcg_others.append(compute_NDCG(np.array(others_scores)))
+    print    
+    print('NDCG@{k}: {ndcg}'.format(k=k, ndcg=np.mean(ndcg)))
 
-    print('NDCG@{k}: {ndcg}, NDCG_target@{k}: {ndcg_t}, NDCG_others@{k}: {ndcg_o}'.format(k=k,
-                                                                                          ndcg=np.mean(ndcg),
-                                                                                          ndcg_t=np.mean(ndcg_target),
-                                                                                          ndcg_o=np.mean(ndcg_others)))
-"""
+  

@@ -36,7 +36,7 @@ class Trainer():
     def train(self):
         avg_loss = 0
         self.model.train() #set the mode to train so it can update gradients
-        for i, sample in enumerate(tqdm(self.data_loader_train)):
+        for i, sample in enumerate(self.data_loader_train):
             qFeat, tFeat, mani_vects,id_t = sample
             tFeat.cuda()
             self.model.zero_grad()
@@ -44,7 +44,7 @@ class Trainer():
             out,hidden = self.model(mani_vects,qFeat)
             out.cuda()
             loss=self.loss(out,tFeat)#(batch_size,output_dim)
-            print(loss.item())
+            print("Loss batch numero ",i, ":",loss.item())
             loss.backward()
             self.optimizer.step()
             avg_loss += loss.item()
@@ -60,7 +60,8 @@ class Trainer():
                 tFeat.cuda()
                 out,hidden = self.model(mani_vects,qFeat)
                 out.cuda()
-                loss=self.loss(out,tFeat)#(batch_size,output_dim    
+                loss=self.loss(out,tFeat)#(batch_size,output_dim   
+                 
                 print (loss.item())          
                 avg_loss += loss.item()
                 torch.cuda.empty_cache() 
@@ -104,11 +105,11 @@ if __name__=="__main__":
     torch.cuda.empty_cache()
     # load dataset
     print('Loading dataset...')
-    train_data =Data_Q_T(par.DATA_TRAIN,shuffle=True)
-    test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
+    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN,shuffle=True)
+    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
     
-    train_loader=fast_loader(train_data,batch_size=32,shuffl=True)
-    test_loader=fast_loader(test_data,batch_size=32,drop_last=False,shuffl=False)
+    train_loader=fast_loader(train_data,batch_size=16,shuffl=True)
+    test_loader=fast_loader(test_data,batch_size=16,drop_last=False,shuffl=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
     # create the folder to save log, checkpoints and args config
     

@@ -190,6 +190,7 @@ class KNNModel():
 
 if __name__ == '__main__':
 
+    '''
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
 
@@ -205,10 +206,24 @@ if __name__ == '__main__':
 
     features_list = np.load(f'eval_out/feat_test.npy')
 
+
     knn = KNNModel()
 
     predictions = knn.predict(features_list)
 
-    calculate_accuracy(labels, predictions)
+    calculate_accuracy(labels, predictions) #0.08 e 0.79
+    
+    '''
 
-    #TODO scrivi funzione find_nearest_image(feature)
+    import torch.nn.functional as F
+    import torch
+    
+    features_list = np.load(f'eval_out/feat_test.npy')
+
+    a = F.normalize(torch.tensor(features_list))
+
+    print(a[10])
+    print(features_list[10])
+
+
+

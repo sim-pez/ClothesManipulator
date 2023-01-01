@@ -13,6 +13,7 @@ import multiprocessing
 from f_utils import listify_manip
 from utils import split_labels, flatten_labels
 
+
 def same_zero_attributes(q_splitted, t_splitted):
     '''
     return True if q and t have the same all-zero attributes but are not the same array
@@ -29,34 +30,41 @@ def same_zero_attributes(q_splitted, t_splitted):
 
 
 def too_much_distance(q, t, N):
+    #only works for same zero attributes arrays
     multi_manip =  np.subtract(q, t)
-    manip_list = listify_manip(multi_manip)
-    distance = len(manip_list)
+    distance = np.count_nonzero(multi_manip == 1)
     if distance > N:
         return True
     else:
         return False
 
 
-def find_couples(q_id, labels, splitted_labels, N):
+def find_couples(q_id, labels, splitted_labels, N, max_manip):
     
     q_splitted = splitted_labels[q_id]
     found_couples = []
+    count = 0
 
-    for t_id, t_splitted in enumerate(splitted_labels):
-        if not too_much_distance(labels[q_id], labels[t_id], N):
-            if not same_zero_attributes(q_splitted, t_splitted):
+    t_indexes = list(range(len(labels)))
+    random.shuffle(t_indexes)
+
+    for t_id in t_indexes:
+        if same_zero_attributes(q_splitted, splitted_labels[t_id]):
+            if not too_much_distance(labels[q_id], labels[t_id], N):
                 found_couples.append((q_id, t_id))
+                count += 1
+        if count == max_manip:
+            break
             
     return found_couples
 
 
-def generate_couples(file_root, img_root_path, N, mode):
+def generate_couples(file_root, img_root_path, N, mode, max_manip):
     '''
     Finds couples s.t.:
     - they have the same all-zero attributes
     - their distance is <= N 
-    Output file in multi_manip.
+      Output file in multi_manip.
 
 
     # to reopen file:
@@ -87,7 +95,6 @@ def generate_couples(file_root, img_root_path, N, mode):
     else:
         print("Argument mode not valid")
     
-    #features_data = np.load(f'eval_out/feat_{mode}.npy')
     labels = data.label_data
     attr_num = data.attr_num
 
@@ -96,9 +103,9 @@ def generate_couples(file_root, img_root_path, N, mode):
     splitted_labels = [split_labels(lbl, attr_num) for lbl in labels]
 
     num_cores = multiprocessing.cpu_count()
-    couples_unflattened = Parallel(n_jobs=num_cores)(delayed(find_couples)(q_id, labels, splitted_labels, N) for q_id in tqdm(range(len(labels))))
+    couples_unflattened = Parallel(n_jobs=num_cores)(delayed(find_couples)(q_id, labels, splitted_labels, N, max_manip) for q_id in tqdm(range(len(labels))))
     
-    del data #, feature_data 
+    del data
 
 
     #flatten triplets
@@ -126,7 +133,30 @@ def generate_couples(file_root, img_root_path, N, mode):
 
 
 def check_couples(file_root, img_root_path, N, mode):
-    hf = h5py.File(f'multi_manip/train/couples_N_{N}.h5', 'r')
+    def too_much_distance_old(q, t, N):
+        multi_manip =  np.subtract(q, t)
+        manip_list = listify_manip(multi_manip)
+        distance = len(manip_list)
+        if distance > N:
+            return True
+        else:
+            return False
+
+    def same_zero_attributes_old(q_splitted, t_splitted):
+        '''
+        return True if q and t have the same all-zero attributes but are not the same array
+        '''    
+        same = True
+        for attr_q, attr_t in zip(q_splitted, t_splitted):
+            if all(e == 0 for e in attr_t) != all(f == 0 for f in attr_q):
+                return False
+            if not np.array_equal(attr_q, attr_t):
+                same = False
+        if same:
+            return False
+        return True
+
+    hf = h5py.File(f'multi_manip/{mode}/couples_N_{N}.h5', 'r')
 
     if mode == 'train':
         data = Data(file_root,  img_root_path, 
@@ -157,25 +187,30 @@ def check_couples(file_root, img_root_path, N, mode):
         q_lbl = labels[q_id]
         q_splitted = splitted_labels[q_id]
         for t_id in hf['t']:
-            if too_much_distance(q_lbl, labels[t_id], N):
+            if too_much_distance_old(q_lbl, labels[t_id], N):
                 print("found an error: distance is too much")
-            if not same_zero_attributes(q_splitted, splitted_labels[t_id]):
+                print(labels[q_id])
+                print(labels[t_id])
+            if not same_zero_attributes_old(q_splitted, splitted_labels[t_id]):
                 print("found an error: zero attributes are not the same")
-            print(labels[q_id])
-            print(labels[t_id])
-            print("+++++++++++++++++")
+                print(labels[q_id])
+                print(labels[t_id])
                 
 
     
 if __name__ == '__main__':
     
-    N = 8
-    mode = 'test'
+    N = 9
+    max_manip = 100
+    
+    mode = 'train'
 
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
 
-    generate_couples(file_root, img_root_path, N, mode)
+
+    mode = 'test'
+    generate_couples(file_root, img_root_path, N, mode, max_manip)
     print("checking couples...")
     check_couples(file_root, img_root_path, N, mode)
     print("couple check finished")

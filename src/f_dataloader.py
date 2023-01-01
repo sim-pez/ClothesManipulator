@@ -8,11 +8,11 @@ import random
 import parameters as par
 from tqdm import tqdm
 import pickle
-#from f_utils import get_manip_array
+from f_utils import listify_manip, create_n_manip
 
 class Data_Q_T(data.Dataset):
 
-    def __init__(self, filename_data,shuffle=True):
+    def __init__(self, filename_data,feat_file,label_file,shuffle=True):
         """
         Read file Couples_N_8.txt,maipolations_N_8.txt
 
@@ -25,7 +25,10 @@ class Data_Q_T(data.Dataset):
         
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
-        self.cut_index, self.split_index=self._load_cut_index()
+
+        self.feat=np.load(feat_file)
+        self.labels=np.loadtxt(label_file,dtype=int)
+        print(self.hf.keys())
         
         self.shuffle = shuffle
         print("Dataset is loaded")
@@ -33,51 +36,40 @@ class Data_Q_T(data.Dataset):
         
     def __getitem__(self, indexes):
         
-        q=self.hf['q'][indexes]
-        t=self.hf['t'][indexes]
-        id_t=self.hf['t_idx'][indexes]
-        manips=self.hf['manip'][indexes]
-        
+        #q=self.hf['q'][indexes]
+        #t=self.hf['t'][indexes]
+       # id_t=self.hf['t_idx'][indexes]
+        #manips=self.hf['manip'][indexes]
+        t_id=self.hf["t"][indexes]
+        q_id=self.hf["q"][indexes]
+        q=self.feat[q_id]
+        t=self.feat[t_id]
+        label_q=self.labels[q_id]
+        label_t=self.labels[t_id]
+        manips=torch.tensor([create_n_manip(par.N,x,y) for x,y in zip(label_q,label_t)])
+        print(manips.shape)
         if self.shuffle:
             ids=np.arange(q.shape[0])
             np.random.shuffle(ids)
             q=q[ids]
             t=t[ids]
             manips=manips[ids]
-            id_t=id_t[ids]
+            
         
-        manips_separated = torch.tensor([self._get_manip_array(x) for x in manips])
+       # manips_separated = torch.tensor([listify_manip(x) for x in manips])
+        #shuffle manipulation vectors
+       # idx = torch.randperm(manips_separated.shape[0])
+        #manips_separated = manips_separated[idx].view(manips_separated.size())
 
-
-        return (q, t, manips_separated,id_t)
+        return (q, t, manips,t_id)
 
 
     def _load_h5_file_with_data(self, file_name):
-       
         hf = h5py.File(file_name)
         return hf
-    def _load_cut_index(self):
-        with open(par.FILE_CUT_INDEX, 'rb') as fp:
-            cut_index = pickle.load(fp)
-            fp.close()
-        with open(par.FILE_SPLIT_INDEX, 'rb') as fp:
-            split_index = pickle.load(fp)
-            fp.close()
-        return cut_index,split_index
-    
-    def _get_manip_array(self,v):
-        Nsplit=np.split(v,self.split_index[:-1])# 12 list of attr_legnth
-        manip_array=np.zeros((12,151),dtype=int)
-        
-        for j in range(manip_array.shape[0]):
-            
-            start,end=self.cut_index[j][0],self.cut_index[j][1]
-            
-            manip_array[j][start:end]=Nsplit[j] #change the part of th matrix relative to attribut j
-        return manip_array[~np.all(manip_array == 0, axis=1)] #drop the zero rows
 
     def __len__(self):
-        return self.hf['manip'].shape[0]
+        return self.hf['q'].shape[0]
 
 
 class RandomBatchSampler(data.Sampler):
@@ -136,15 +128,16 @@ def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl
     )
 
 if __name__=="__main__":
-    test_data =Data_Q_T(par.DATA_TEST,shuffle=False)
-    test_loader=fast_loader(test_data,batch_size=10,shuffl=False)
-    for i, sample in enumerate(tqdm(test_loader)):
+    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN,shuffle=True)
+    train_loader=fast_loader(train_data,batch_size=32,shuffl=True)
+    #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,shuffle=False)
+    #test_loader=fast_loader(test_data,batch_size=10,shuffl=False)
+    for i, sample in enumerate(tqdm(train_loader)):
         qFeat,tFeat,mani_vects,id_t = sample
-        
-        #print(h_0.shape)
-        print(id_t[0])
-
-
-        
-
+        print(qFeat.shape)
+        print(mani_vects.shape)
+        print(tFeat.shape)
+        print(qFeat[10][100:110])
+        print (train_data.__len__())
         break
+
