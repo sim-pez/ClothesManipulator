@@ -27,7 +27,8 @@ class Trainer():
         self.cpu=False
         
         if  torch.cuda.is_available() and self.gpu!=None:
-            torch.cuda.set_device(self.gpu)
+            print("sett cuda device")
+            torch.cuda.set_device(1)
             self.model.cuda()
         else:
             self.cpu=True
@@ -100,21 +101,21 @@ class Trainer():
 
 if __name__=="__main__":
    # print(torch.cuda.memory_stats())
-    
+    torch.cuda.set_device(1)
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
     torch.cuda.empty_cache()
     # load dataset
     print('Loading dataset...')
-    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN,shuffle=True)
+    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN,shuffle=False)
     test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
     
-    train_loader=fast_loader(train_data,batch_size=16,shuffl=True)
+    train_loader=fast_loader(train_data,batch_size=16,shuffl=False)
     test_loader=fast_loader(test_data,batch_size=16,drop_last=False,shuffl=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
     # create the folder to save log, checkpoints and args config
     
     loss=torch.nn.MSELoss().cuda()
-    trainer=Trainer(gpu=0,data_loader_train=train_loader, data_loader_test=test_loader,
+    trainer=Trainer(gpu=1,data_loader_train=train_loader, data_loader_test=test_loader,
     loss=loss,model=model,num_epochs=10)
     trainer.run()
     

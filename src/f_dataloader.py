@@ -25,11 +25,8 @@ class Data_Q_T(data.Dataset):
         
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
-
         self.feat=np.load(feat_file)
         self.labels=np.loadtxt(label_file,dtype=int)
-        print(self.hf.keys())
-        
         self.shuffle = shuffle
         print("Dataset is loaded")
         
@@ -46,8 +43,11 @@ class Data_Q_T(data.Dataset):
         t=self.feat[t_id]
         label_q=self.labels[q_id]
         label_t=self.labels[t_id]
+        #manips=np.random.rand(q.shape[0],8,151)
+        #print(manips)
+
         manips=torch.tensor([create_n_manip(par.N,x,y) for x,y in zip(label_q,label_t)])
-        print(manips.shape)
+        
         if self.shuffle:
             ids=np.arange(q.shape[0])
             np.random.shuffle(ids)
@@ -56,7 +56,7 @@ class Data_Q_T(data.Dataset):
             manips=manips[ids]
             
         
-       # manips_separated = torch.tensor([listify_manip(x) for x in manips])
+        #manips_separated = torch.tensor([listify_manip(x) for x in manips])
         #shuffle manipulation vectors
        # idx = torch.randperm(manips_separated.shape[0])
         #manips_separated = manips_separated[idx].view(manips_separated.size())
