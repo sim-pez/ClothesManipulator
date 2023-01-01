@@ -32,14 +32,19 @@ def create_n_manip(N, q_lbl, t_lbl):
 
     def addTriangular(manip_list, remaining):
         
-        while True:
-            mod_idx = random.randint(0, len(manip_list) - 1)
-            pos = np.where(manip_list[mod_idx])[0][0]
-            if pos != split_index[5] and pos != split_index[5] + 1:  #the only attribute that has size two
+        mod_idx_candidates = list(range(len(manip_list)))
+        random.shuffle(mod_idx_candidates)
+        for candidate in mod_idx_candidates:
+            pos = np.where(manip_list[candidate])[0][0]
+            if candidate != split_index[5] and candidate != split_index[5] + 1:
+                mod_idx = candidate
                 break
+            if candidate == mod_idx_candidates[-1]:
+                return manip_list, remaining, False  #available manips are all on size 2 attributes: you need fwbw
+
         old_manip = manip_list[mod_idx]
         n_old = np.where(old_manip == -1)[0][0]
-        p_old = np.where(old_manip == 1)[0][0] 
+        p_old = np.where(old_manip == 1)[0][0]
         for ci in cut_index:
             if ci[0] <= p_old <= ci[1] - 1:
                 ci_low = ci[0]
@@ -48,10 +53,14 @@ def create_n_manip(N, q_lbl, t_lbl):
         
         first_manip = np.copy(old_manip)
         first_manip[p_old] = 0
-        while True:
-            p_first = random.randint(ci_low, ci_high - 1)
-            if p_first != n_old and p_first != p_old:
+        p_first_candidates = list(range(ci_low, ci_high))
+        for candidate in p_first_candidates:
+            if candidate != n_old and candidate != p_old:
+                p_first = candidate
                 break
+            if candidate == p_first_candidates[-1]:
+                return manip_list, remaining, False
+                
         first_manip[p_first] = 1
 
         second_manip = np.copy(old_manip)
@@ -72,7 +81,7 @@ def create_n_manip(N, q_lbl, t_lbl):
 
         remaining -= 1
 
-        return manip_list, remaining
+        return manip_list, remaining, True
 
 
     def addForwardBackward(manip_list, remaining, q_lbl):
@@ -124,27 +133,31 @@ def create_n_manip(N, q_lbl, t_lbl):
         return manip_list, remaining
 
     multi_manip =  np.subtract(t_lbl, q_lbl)
-
     manip_list = listify_manip(multi_manip)
+
+    orig_manip_list = np.copy(manip_list)
     original_distance = len(manip_list)
+
     remaining = N - original_distance
 
     if remaining > N and not 0 <= original_distance <= 8:
         raise Exception("q and t had not to be selected!")
 
-    sequence = []
-
     while(True):
-
         if remaining == 1:
-            manip_list, remaining = addTriangular(manip_list, remaining)
+            manip_list, remaining, success = addTriangular(manip_list, remaining)
+            if not success:
+                manip_list = np.copy(orig_manip_list)
+                remaining = N - original_distance
         elif remaining >= 2:
             if original_distance == 0:
-                addForwardBackward(manip_list, remaining, q_lbl)
+                manip_list, remaining = addForwardBackward(manip_list, remaining, q_lbl)
             else:
                 doTriangular = bool(random.getrandbits(1))
                 if doTriangular:
-                    manip_list, remaining = addTriangular(manip_list, remaining)
+                    manip_list, remaining, success = addTriangular(manip_list, remaining)
+                    if not success:
+                        manip_list, remaining = addForwardBackward(manip_list, remaining, q_lbl)
                 else:
                     manip_list, remaining = addForwardBackward(manip_list, remaining, q_lbl)
         elif remaining == 0:
