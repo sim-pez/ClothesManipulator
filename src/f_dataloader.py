@@ -25,29 +25,29 @@ class Data_Q_T(data.Dataset):
         
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
+        self.q=self.hf['q']
+        self.t=self.hf['t']
         self.feat=np.load(feat_file)
         self.labels=np.loadtxt(label_file,dtype=int)
         self.shuffle = shuffle
-        print("Dataset is loaded")
+        print("Dataset is loaded: ",self.__len__())
         
         
     def __getitem__(self, indexes):
         
-        #q=self.hf['q'][indexes]
-        #t=self.hf['t'][indexes]
-       # id_t=self.hf['t_idx'][indexes]
-        #manips=self.hf['manip'][indexes]
-        t_id=self.hf["t"][indexes]
-        q_id=self.hf["q"][indexes]
+       # t_id=self.hf["t"][indexes]
+        #q_id=self.hf["q"][indexes]
+        t_id=self.t[indexes]
+        q_id=self.q[indexes]
         q=self.feat[q_id]
         t=self.feat[t_id]
         label_q=self.labels[q_id]
         label_t=self.labels[t_id]
-        #manips=np.random.rand(q.shape[0],8,151)
-        #print(manips)
-
-        manips=torch.tensor([create_n_manip(par.N,x,y) for x,y in zip(label_q,label_t)])
-        
+      
+        #print( label_q.shape, label_t.shape,q_id)
+        manips=create_n_manip(par.N,label_q,label_t)
+        """
+       
         if self.shuffle:
             ids=np.arange(q.shape[0])
             np.random.shuffle(ids)
@@ -55,13 +55,13 @@ class Data_Q_T(data.Dataset):
             t=t[ids]
             manips=manips[ids]
             
+         """
         
-        #manips_separated = torch.tensor([listify_manip(x) for x in manips])
         #shuffle manipulation vectors
-       # idx = torch.randperm(manips_separated.shape[0])
+        #idx = torch.randperm(manips_separated.shape[0])
         #manips_separated = manips_separated[idx].view(manips_separated.size())
 
-        return (q, t, manips,t_id)
+        return (q, t,manips,t_id)
 
 
     def _load_h5_file_with_data(self, file_name):
@@ -127,17 +127,37 @@ def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl
         sampler=data.BatchSampler(RandomBatchSampler(dataset, batch_size,shuffl), batch_size=batch_size, drop_last=drop_last)
     )
 
+class Data_original(data.Dataset):
+    def __init__(self, filename_data,feat_file,label_file,shuffle=True):
+        """
+        Read file Couples_N_8.txt,maipolations_N_8.txt
+
+        gallary_feats_train.npy (!PROBLEM it's too big!) idea di fare file npy per ogni vector feat!! 
+        secondo sol:
+
+        divider usanndo 
+        """
+        super(Data_Q_T, self).__init__()
+
+
+
 if __name__=="__main__":
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN,shuffle=True)
-    train_loader=fast_loader(train_data,batch_size=32,shuffl=True)
-    #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
+                                               num_workers=1,
+                                               drop_last=True)
+    #train_loader=fast_loader(train_data,batch_size=32,shuffl=True)
+    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
     #test_loader=fast_loader(test_data,batch_size=10,shuffl=False)
-    for i, sample in enumerate(tqdm(train_loader)):
-        qFeat,tFeat,mani_vects,id_t = sample
-        print(qFeat.shape)
-        print(mani_vects.shape)
-        print(tFeat.shape)
-        print(qFeat[10][100:110])
-        print (train_data.__len__())
-        break
-
+    test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
+    sampler=torch.utils.data.SequentialSampler(test_data),
+                                               num_workers=1,
+                                               drop_last=False)
+   
+    tq=tqdm(test_loader)
+    for i, sample in enumerate(tq):
+        qFeat,tFeat,manips_vec,id_t = sample
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape)))
+        
+    
+        

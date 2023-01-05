@@ -115,28 +115,32 @@ class LSTM_ManyToOne(nn.Module):
     def init_hidden(self, batch_size,qFeat):
        
         ########init_hidden
+        #TODO init also c_0 with qFeat
         h_0=tuple([ qFeat for k in range (self.n_layers)])
         h_0=torch.stack(h_0,dim=0)
-        print(h_0.shape)
+        #print(h_0.shape)
         c_0=torch.zeros(self.n_layers, batch_size, self.hidden_dim,dtype=torch.float32)
         hidden=(h_0.cuda(),c_0.cuda())
         return hidden
 
 if __name__=="__main__":
-    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=True)
-    test_loader=fast_loader(test_data,batch_size=32)
-    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=1,drop_prob=0.5)
     torch.cuda.set_device(1)
+    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
+    test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
+                                          sampler=torch.utils.data.SequentialSampler(test_data),
+                                               num_workers=16,
+                                               drop_last=False)
+    #test_loader=fast_loader(test_data,batch_size=32)
+    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
+    
     model.cuda()
-    """
+   
     
     for i, sample in enumerate(tqdm(test_loader)):
-        qFeat,tFeat,mani_vects = sample
-        print(tFeat,qFeat)
+        qFeat,tFeat,mani_vects,t_id = sample
+        print(tFeat.shape,qFeat.shape)
         out,hidden=model(mani_vects,qFeat)
-        print(out)
+        #print(out)
         
-        break
-
-        #print(i,out.shape)
-    """ 
+        print(i,out.shape)
+        
