@@ -23,15 +23,16 @@ import torch.nn.functional as F
 
 
 if __name__ == '__main__':
+    torch.cuda.set_device(1)
     #load_pretrained_model
     mode="test"
     gallery_feat=np.load(par.FEAT_TEST)
     
     test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
     gallery_loader=fast_loader(test_data,batch_size=32,drop_last=False,shuffl=False)
-    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=2,drop_prob=0.5)
+    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
     loss=torch.nn.MSELoss().cuda()
-    last_train="12-23-09:18"
+    last_train="01-02-00:21"
     path_pretrained_model=os.path.join(par.LOG_DIR,"{last_train}/best_model.pkl".format(last_train=last_train))
     model.load_state_dict(torch.load(path_pretrained_model))
     model.cuda()
@@ -88,7 +89,7 @@ if __name__ == '__main__':
 
     print("Total hits",hits)
     print('Top@{k} accuracy: {acc}'.format(k=k, acc=(hits/num_query)*100))
-
+"""
     #compute NDCG
     ndcg = []
    # ndcg_target = []  # consider changed attribute only
@@ -118,3 +119,4 @@ if __name__ == '__main__':
     print('NDCG@{k}: {ndcg}'.format(k=k, ndcg=np.mean(ndcg)))
 
   
+"""
