@@ -1,34 +1,28 @@
-from cProfile import label
-from operator import truediv
-from tqdm.auto import tqdm
 import constants as C
 import random
 import torchvision.transforms as transforms
 import numpy as np
 import h5py
 from dataloader import Data
-from joblib import Parallel, delayed
-import multiprocessing
+from f_utils import cut_index
+from numba import jit
 
 from f_utils import listify_manip
-from utils import split_labels, flatten_labels
+from utils import split_labels
 
-
-def same_zero_attributes(q_splitted, t_splitted):
+@jit
+def same_zero_attributes(q_lbl, t_lbl, cut_index_np):
     '''
     return True if q and t have the same all-zero attributes but are not the same array
     '''    
-    same = True
-    for attr_q, attr_t in zip(q_splitted, t_splitted):
-        if all(e == 0 for e in attr_t) != all(f == 0 for f in attr_q):
-            return False
-        if not np.array_equal(attr_q, attr_t):
-            same = False
-    if same:
+    if np.array_equal(q_lbl, t_lbl):
         return False
+    for ci in cut_index_np:
+        if (not np.any(q_lbl[ci[0]:ci[1]])) != (not np.any(t_lbl[ci[0]:ci[1]])):
+            return False
     return True
 
-
+@jit
 def too_much_distance(q, t, N):
     #only works for same zero attributes arrays
     multi_manip =  np.subtract(q, t)
@@ -38,25 +32,34 @@ def too_much_distance(q, t, N):
     else:
         return False
 
+@jit
+def find_couples(labels, N, max_manip):
 
-def find_couples(q_id, labels, splitted_labels, N, max_manip):
+    n_labels = labels.shape[0]
+
+    found_q = np.full(n_labels * max_manip, -1, dtype=int)
+    found_t = np.full(n_labels * max_manip, -1, dtype=int)
+
+    cut_index_np = np.array(cut_index)
+
     
-    q_splitted = splitted_labels[q_id]
-    found_couples = []
-    count = 0
+    for q_id, q_lbl in enumerate(labels):
+    
+        count = 0
 
-    t_indexes = list(range(len(labels)))
-    random.shuffle(t_indexes)
+        t_indexes = np.arange(n_labels)
+        np.random.shuffle(t_indexes)
 
-    for t_id in t_indexes:
-        if same_zero_attributes(q_splitted, splitted_labels[t_id]):
-            if not too_much_distance(labels[q_id], labels[t_id], N):
-                found_couples.append((q_id, t_id))
-                count += 1
-        if count == max_manip:
-            break
+        for t_id in t_indexes:
+            if same_zero_attributes(q_lbl, labels[t_id], cut_index_np):
+                if not too_much_distance(q_lbl, labels[t_id], N):
+                    found_q[q_id * max_manip + count] = q_id
+                    found_t[q_id * max_manip + count] = t_id
+                    count += 1
+            if count == max_manip:
+                break
             
-    return found_couples
+    return found_q, found_t
 
 
 def generate_couples(file_root, img_root_path, N, mode, max_manip):
@@ -65,8 +68,6 @@ def generate_couples(file_root, img_root_path, N, mode, max_manip):
     - they have the same all-zero attributes
     - their distance is <= N 
       Output file in multi_manip.
-
-
     # to reopen file:
     # hf = h5py.File(f'multi_manip/train/couples_N_{N}.h5', 'r')
     # q = hf['q'][0]
@@ -96,43 +97,33 @@ def generate_couples(file_root, img_root_path, N, mode, max_manip):
         print("Argument mode not valid")
     
     labels = data.label_data
-    attr_num = data.attr_num
 
     print("Finding couples")
-    
-    splitted_labels = [split_labels(lbl, attr_num) for lbl in labels]
-
-    num_cores = multiprocessing.cpu_count()
-    couples_unflattened = Parallel(n_jobs=num_cores)(delayed(find_couples)(q_id, labels, splitted_labels, N, max_manip) for q_id in tqdm(range(len(labels))))
-    
-    del data
+    q_list, t_list = find_couples(labels, N, max_manip)
 
 
-    #flatten triplets
-    print("processing data...")
-    couples = []
-    for couples_list in couples_unflattened:
-        for couple in couples_list:
-            couples.append(couple) 
-    del couples_unflattened
+    q_list = [e for e in q_list if e != -1]
+    t_list = [e for e in t_list if e != -1]
 
+    assert len(q_list) == len(t_list)
+
+    couples = list(zip(q_list, t_list))
     random.shuffle(couples)
+    q_list, t_list = zip(*couples)
     
-    q = np.array([couple[0] for couple in couples])
-    t = np.array([couple[1] for couple in couples])
-    del couples
-
     #save triplets
     print("writing triplets")
     hf = h5py.File(f'multi_manip/{mode}/couples_N_{N}.h5', 'w')
-    hf.create_dataset('q', data=q)
-    hf.create_dataset('t', data=t)
+    hf.create_dataset('q', data=np.array(q_list))
+    hf.create_dataset('t', data=np.array(t_list))
+
     hf.close()
 
     print("done!")
 
 
 def check_couples(file_root, img_root_path, N, mode):
+
     def too_much_distance_old(q, t, N):
         multi_manip =  np.subtract(q, t)
         manip_list = listify_manip(multi_manip)
@@ -177,51 +168,38 @@ def check_couples(file_root, img_root_path, N, mode):
     else:
         print("Argument mode not valid")
     
+    print("Checking couples...")
+
     labels = data.label_data
     attr_num = data.attr_num
 
     splitted_labels = [split_labels(lbl, attr_num) for lbl in labels]
 
+    for q_id, t_id in zip(hf['q'], hf['t']):
+        if too_much_distance_old(labels[q_id], labels[t_id], N):
+            print("Found an error: distance is too much")
+            print(f"Q: {q_id}, T: {t_id}")
+        if not same_zero_attributes_old(splitted_labels[q_id], splitted_labels[t_id]):
+            print("Found an error: zero attributes are not the same")
+            print(f"Q: {q_id}, T: {t_id}")
 
-    for q_id in tqdm(hf['q']):
-        q_lbl = labels[q_id]
-        q_splitted = splitted_labels[q_id]
-        for t_id in hf['t']:
-            if too_much_distance_old(q_lbl, labels[t_id], N):
-                print("found an error: distance is too much")
-                print(labels[q_id])
-                print(labels[t_id])
-            if not same_zero_attributes_old(q_splitted, splitted_labels[t_id]):
-                print("found an error: zero attributes are not the same")
-                print(labels[q_id])
-                print(labels[t_id])
+    print("Done!")
                 
 
     
 if __name__ == '__main__':
     
-    N = 9
-    max_manip = 100
-    
+    N = 4
+    max_manip = 10
     mode = 'train'
 
     file_root = 'splits/Shopping100k'
     img_root_path = '/Users/simone/Desktop/VMR/Dataset/Shopping100k/Images'
 
+    generate_couples(file_root, img_root_path, N, mode, max_manip)
+    check_couples(file_root, img_root_path, N, mode)
 
+    print('now doing for test set')
     mode = 'test'
     generate_couples(file_root, img_root_path, N, mode, max_manip)
-    print("checking couples...")
     check_couples(file_root, img_root_path, N, mode)
-    print("couple check finished")
-
-
-
-
-
-
-
-
-
-
-

@@ -1,13 +1,17 @@
 #%%
 import os
+VAL_ORIGINAL=True
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR=lambda x,y :os.path.join(y,"multi_manip/{}".format(x))
-DATA_IDS=lambda y: os.path.join(y,"couples_N_8_small.h5")
+DATA_IDS=lambda y: os.path.join(y,"couples_N_8.h5")
 
 DATA_TRAIN_DIR=DATA_DIR("train",ROOT_DIR)
 DATA_TEST_DIR=DATA_DIR("test",ROOT_DIR)
 DATA_TRAIN=DATA_IDS(DATA_TRAIN_DIR)
-DATA_TEST=DATA_IDS(DATA_TEST_DIR)
+if VAL_ORIGINAL:
+    DATA_TEST= os.path.join(DATA_TEST_DIR,"couples_N_1.h5")
+else:
+    DATA_TEST=DATA_IDS(DATA_TEST_DIR)
 
 FILE_CUT_INDEX=DATA_DIR("cut_index.obj",ROOT_DIR)
 FILE_SPLIT_INDEX=DATA_DIR("split_index.obj",ROOT_DIR)

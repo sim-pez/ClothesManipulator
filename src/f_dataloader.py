@@ -12,7 +12,7 @@ from f_utils import listify_manip, create_n_manip
 
 class Data_Q_T(data.Dataset):
 
-    def __init__(self, filename_data,feat_file,label_file,shuffle=True):
+    def __init__(self, filename_data,feat_file,label_file):
         """
         Read file Couples_N_8.txt,maipolations_N_8.txt
 
@@ -22,30 +22,40 @@ class Data_Q_T(data.Dataset):
         divider usanndo 
         """
         super(Data_Q_T, self).__init__()
+        self.N=par.N
         
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
+        print(self.hf.keys())
         self.q=self.hf['q']
         self.t=self.hf['t']
         self.feat=np.load(feat_file)
-        self.labels=np.loadtxt(label_file,dtype=int)
-        self.shuffle = shuffle
+        if (self.N==1):
+            self.manips=self.hf['manips_vec']
+        else:
+            self.labels=np.loadtxt(label_file,dtype=int)
+        
         print("Dataset is loaded: ",self.__len__())
         
         
     def __getitem__(self, indexes):
-        
        # t_id=self.hf["t"][indexes]
         #q_id=self.hf["q"][indexes]
         t_id=self.t[indexes]
         q_id=self.q[indexes]
         q=self.feat[q_id]
         t=self.feat[t_id]
-        label_q=self.labels[q_id]
-        label_t=self.labels[t_id]
-      
+        
+        if(self.N==1):
+            manips=torch.tensor(self.manips[indexes])
+            manips = manips.unsqueeze(0)
+            
+        else:
+            label_q=self.labels[q_id]
+            label_t=self.labels[t_id]
         #print( label_q.shape, label_t.shape,q_id)
-        manips=create_n_manip(par.N,label_q,label_t)
+            manips=create_n_manip(par.N,label_q,label_t)
+        
         """
        
         if self.shuffle:
@@ -103,7 +113,6 @@ class RandomBatchSampler(data.Sampler):
             for index in idx:
                 yield int(index)
 
-
 def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl=True):
     """Implements fast loading by taking advantage of .h5 dataset
     The .h5 dataset has a speed bottleneck that scales (roughly) linearly with the number
@@ -127,9 +136,10 @@ def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl
         sampler=data.BatchSampler(RandomBatchSampler(dataset, batch_size,shuffl), batch_size=batch_size, drop_last=drop_last)
     )
 
-class Data_original(data.Dataset):
-    def __init__(self, filename_data,feat_file,label_file,shuffle=True):
+class Data_Query(data.Dataset):
+    def __init__(self,Data_test, gallery_feat,label_data):
         """
+        Data_tests (q,t) gallery_feat
         Read file Couples_N_8.txt,maipolations_N_8.txt
 
         gallary_feats_train.npy (!PROBLEM it's too big!) idea di fare file npy per ogni vector feat!! 
@@ -137,18 +147,56 @@ class Data_original(data.Dataset):
 
         divider usanndo 
         """
-        super(Data_Q_T, self).__init__()
+        super(Data_Query, self).__init__()
+        self.N=par.N
+        self.VAL=par.VAL_ORIGINAL
+        self.hf=Data_test
+        self.q=self.hf['q']#id_query
+        self.feat=gallery_feat
+        if (self.N==1 or self.VAL ):
+            self.manips=self.hf['manips_vec']
+            self.t=self.hf['t_label']
+        else:
+            self.t=self.hf['t']
+            self.labels=label_data
+        print("Dataset is loaded: ",self.__len__())
+    def __getitem__(self, indexes):
+         
+        q_id=self.q[indexes]
+        q=self.feat[q_id]
+            
+        if(self.N==1):
+            manips=torch.tensor(self.manips[indexes])
+            manips = manips.unsqueeze(0)
+            t=self.t[indexes]
+            t_id=self.q[indexes]
+        else:
+            t_id=self.t[indexes]
+            t=self.feat[t_id]
+            label_q=self.labels[q_id]
+            label_t=self.labels[t_id]
+            #print( label_q.shape, label_t.shape,q_id)
+            manips=create_n_manip(par.N,label_q,label_t)
+            
+        return (q, t,manips,t_id)
+    def __len__(self):
+        return self.hf['q'].shape[0]
+
 
 
 
 if __name__=="__main__":
-    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN,shuffle=True)
+    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
                                                num_workers=1,
                                                drop_last=True)
-    #train_loader=fast_loader(train_data,batch_size=32,shuffl=True)
-    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
-    #test_loader=fast_loader(test_data,batch_size=10,shuffl=False)
+    #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
+
+    gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
+    test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
+    Data_test= h5py.File(par.DATA_TEST)
+    
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
     test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
     sampler=torch.utils.data.SequentialSampler(test_data),
                                                num_workers=1,
