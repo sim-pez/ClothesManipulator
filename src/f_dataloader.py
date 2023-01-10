@@ -164,8 +164,7 @@ class Data_Query(data.Dataset):
          
         q_id=self.q[indexes]
         q=self.feat[q_id]
-            
-        if(self.N==1):
+        if(self.N==1 or self.VAL):
             manips=torch.tensor(self.manips[indexes])
             manips = manips.unsqueeze(0)
             t=self.t[indexes]

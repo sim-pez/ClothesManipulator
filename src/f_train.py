@@ -27,7 +27,7 @@ class Trainer():
         self.loss=loss
         self.lr=lr
         self.optimizer = torch.optim.Adam(list(self.model.parameters()), lr=self.lr,betas=(0.9, 0.999))
-        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 5, 0.5)
+        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 10, 0.1)
         self.num_epochs=num_epochs
         self.date=datetime.datetime.now().strftime("%m-%d-%H:%M")
         self.log_dir=os.path.join(par.LOG_DIR,self.date)
@@ -125,7 +125,7 @@ class Trainer():
                     f.write("saved_a new best_model\n ")
                 torch.save(self.model.state_dict(), os.path.join(self.log_dir, "best_model.pkl"))
                 print('Best model in {dir}/best_model.pkl'.format(dir=self.log_dir))
-                previous_best_avg_test_loss = avg_test_acc
+                previous_best_avg_test_acc = avg_test_acc
 
             self.lr_scheduler.step()
 
@@ -154,18 +154,16 @@ if __name__=="__main__":
     
     
     train_loader=torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
-                                               
                                                drop_last=True)
     test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
                                                sampler=torch.utils.data.SequentialSampler(test_data),
-                                               
                                                drop_last=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=par.N,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
     # create the folder to save log, checkpoints and args config
     
     loss=torch.nn.MSELoss().cuda()
     trainer=Trainer(gpu=1,data_loader_train=train_loader, data_loader_test=test_loader,
-    loss=loss,model=model,gallery_feat=gallery_feat,test_labels=test_labels,query_labels=query_labels,num_epochs=10,lr=0.001)
+    loss=loss,model=model,gallery_feat=gallery_feat,test_labels=test_labels,query_labels=query_labels,num_epochs=100,lr=0.001)
     trainer.run()
     
 

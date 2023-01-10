@@ -29,10 +29,12 @@ if __name__ == '__main__':
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
     label_data = np.loadtxt(os.path.join(par.ROOT_DIR,"splits/Shopping100k/labels_test.txt"), dtype=int)
     #load the GT labels of queries images
-    Data_test = h5py.File(par.DATA_TEST)
-   
+    path="/home/falhamdoosh/disentagledFeaturesExtractor/multi_manip/test/couples_N_6_small.h5"
+    #path=par.DATA_TEST
+    Data_test = h5py.File(path)
+    val= par.VAL_ORIGINAL
     print(par.N)
-    if(par.N==1 or par.VAL_ORIGINAL):
+    if(par.N==1 or val ):
         query_labels=Data_test['t_label']
         test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=label_data)
     else:
@@ -44,8 +46,7 @@ if __name__ == '__main__':
                                           sampler=torch.utils.data.SequentialSampler(test_data),
                                                num_workers=16,
                                                drop_last=False)
-    model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
-    loss=torch.nn.MSELoss().cuda()
+    model=LSTM_ManyToOne(input_size=151,seq_len=par.N,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
     last_train="01-05-15:44"
     path_pretrained_model=os.path.join(par.LOG_DIR,"{last_train}/best_model.pkl".format(last_train=last_train))
     model.load_state_dict(torch.load(path_pretrained_model))

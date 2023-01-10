@@ -113,7 +113,6 @@ class LSTM_ManyToOne(nn.Module):
         out = self.fc(out)
         return out, hidden
     def init_hidden(self, batch_size,qFeat):
-       
         ########init_hidden
         #TODO init also c_0 with qFeat
         h_0=tuple([ qFeat for k in range (self.n_layers)])
