@@ -5,7 +5,6 @@ LICENSE
 NOTICE
 dati
 models/.DS_Store
-
 settings.json
 splits/.DS_Store
 splits/DeepFashion/attr_num.txt
@@ -41,8 +40,7 @@ src/__pycache__/model.cpython-37.pyc
 src/__pycache__/utils.cpython-37.pyc
 .vscode/settings.json
 .gitignore
-models/Shopping100k/extractor_best.pkl
-models/Shopping100k/memory_best.pkl
+models
 multi_manip
 eval_out
 log
