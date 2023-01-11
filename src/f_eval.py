@@ -27,27 +27,27 @@ if __name__ == '__main__':
     #load_pretrained_model
     mode="test"
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
-    label_data = np.loadtxt(os.path.join(par.ROOT_DIR,"splits/Shopping100k/labels_test.txt"), dtype=int)
+    test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
     #load the GT labels of queries images
-    path="/home/falhamdoosh/disentagledFeaturesExtractor/multi_manip/test/couples_N_6_small.h5"
-    #path=par.DATA_TEST
+    #path="/home/falhamdoosh/disentagledFeaturesExtractor/multi_manip/test/couples_N_6_small.h5"
+    path=par.DATA_TEST
     Data_test = h5py.File(path)
     val= par.VAL_ORIGINAL
-    print(par.N)
     if(par.N==1 or val ):
         query_labels=Data_test['t_label']
-        test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=label_data)
+        
     else:
         t_id=Data_test['t']#id del target 
-        query_labels=label_data[t_id]
-        test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
+        query_labels=test_labels[t_id]
+        #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
 
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
     gallery_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
                                           sampler=torch.utils.data.SequentialSampler(test_data),
                                                num_workers=16,
                                                drop_last=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=par.N,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
-    last_train="01-05-15:44"
+    last_train=par.MODEL_EVAL
     path_pretrained_model=os.path.join(par.LOG_DIR,"{last_train}/best_model.pkl".format(last_train=last_train))
     model.load_state_dict(torch.load(path_pretrained_model))
     model.cuda()
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     with torch.no_grad():
         for i, sample in enumerate(tqdm(gallery_loader)):
-            qFeat,tFeat,mani_vects,id_t = sample
+            qFeat,label_t,mani_vects= sample
             feat,hidden = model(mani_vects,qFeat)
             #TODO check if we shoul do normalization!
             predicted_tfeat.append(feat.cpu().numpy())
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     for q in tq: # itera i dati predicted_tfeat
         neighbours_idxs = knn[q]# gli indici dei k-feat più simili alla predicted_tfeat[q]
         for n_idx in neighbours_idxs:
-            if (label_data[n_idx] == query_labels[q]).all():
+            if (test_labels[n_idx] == query_labels[q]).all():
                 hits += 1
                 break
         tq.set_description("Num of hit {h}".format(h=hits))
@@ -116,10 +116,10 @@ if __name__ == '__main__':
         neighbours_idxs = knn[q]
        # indicator = query_inds[q]
         #target_attr = get_target_attr(indicator, gallery_data.attr_num)
-        attr_num=np.loadtxt("/home/falhamdoosh/disentagledFeaturesExtractor/splits/Shopping100k/attr_num.txt",dtype=int)
+        attr_num=np.loadtxt(os.path.join(par.ROOT_DIR, "splits/Shopping100k/attr_num.txt") ,dtype=int)
         target_label = split_labels(query_labels[q],attr_num)
         for n_idx in neighbours_idxs:
-            n_label = split_labels(label_data[n_idx], attr_num)
+            n_label = split_labels(test_labels[n_idx], attr_num)
             # compute matched_labels number
             match_cnt = 0
             others_cnt = 0

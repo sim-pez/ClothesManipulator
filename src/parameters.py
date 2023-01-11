@@ -24,6 +24,9 @@ LABEL_TRAIN=os.path.join(ROOT_DIR,"splits/Shopping100k/labels_train.txt")
 LABEL_TEST=os.path.join(ROOT_DIR,"splits/Shopping100k/labels_test.txt")
 NUM_LAYER=2
 N = 1
+NUM_EPOCH=20
+MODEL_EVAL="01-05-15:44"
+LR=0.001
 
 if __name__=="__main__":
     print(DATA_TRAIN,DATA_TEST)

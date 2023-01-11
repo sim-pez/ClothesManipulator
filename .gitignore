@@ -41,6 +41,12 @@ src/__pycache__/model.cpython-37.pyc
 src/__pycache__/utils.cpython-37.pyc
 .vscode/settings.json
 .gitignore
-eval_out/gallery_feats_train.npy
-eval_out/gallery_feats_test.npy
-
+models/Shopping100k/extractor_best.pkl
+models/Shopping100k/memory_best.pkl
+multi_manip
+eval_out
+log
+knn
+mini_ds
+splits
+info.txt

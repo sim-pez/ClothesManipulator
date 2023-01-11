@@ -26,7 +26,7 @@ class Data_Q_T(data.Dataset):
         
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
-        print(self.hf.keys())
+        
         self.q=self.hf['q']
         self.t=self.hf['t']
         self.feat=np.load(feat_file)
@@ -56,22 +56,8 @@ class Data_Q_T(data.Dataset):
         #print( label_q.shape, label_t.shape,q_id)
             manips=create_n_manip(par.N,label_q,label_t)
         
-        """
-       
-        if self.shuffle:
-            ids=np.arange(q.shape[0])
-            np.random.shuffle(ids)
-            q=q[ids]
-            t=t[ids]
-            manips=manips[ids]
-            
-         """
-        
-        #shuffle manipulation vectors
-        #idx = torch.randperm(manips_separated.shape[0])
-        #manips_separated = manips_separated[idx].view(manips_separated.size())
 
-        return (q, t,manips,t_id)
+        return (q, t,manips)
 
 
     def _load_h5_file_with_data(self, file_name):
@@ -155,7 +141,7 @@ class Data_Query(data.Dataset):
         self.feat=gallery_feat
         if (self.N==1 or self.VAL ):
             self.manips=self.hf['manips_vec']
-            self.t=self.hf['t_label']
+            self.label_t=self.hf['t_label']
         else:
             self.t=self.hf['t']
             self.labels=label_data
@@ -167,17 +153,17 @@ class Data_Query(data.Dataset):
         if(self.N==1 or self.VAL):
             manips=torch.tensor(self.manips[indexes])
             manips = manips.unsqueeze(0)
-            t=self.t[indexes]
-            t_id=self.q[indexes]
+            label_t=self.label_t[indexes]
+            
         else:
             t_id=self.t[indexes]
-            t=self.feat[t_id]
+            #t=self.feat[t_id]
             label_q=self.labels[q_id]
             label_t=self.labels[t_id]
             #print( label_q.shape, label_t.shape,q_id)
             manips=create_n_manip(par.N,label_q,label_t)
             
-        return (q, t,manips,t_id)
+        return (q,label_t,manips)
     def __len__(self):
         return self.hf['q'].shape[0]
 
@@ -187,7 +173,7 @@ class Data_Query(data.Dataset):
 if __name__=="__main__":
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
-                                               num_workers=1,
+                                               
                                                drop_last=True)
     #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
 
@@ -198,13 +184,19 @@ if __name__=="__main__":
     test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
     test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
     sampler=torch.utils.data.SequentialSampler(test_data),
-                                               num_workers=1,
+                                               
                                                drop_last=False)
    
+    
+    tq=tqdm(train_loader)
+    for i, sample in enumerate(tq):
+        qFeat,tFeat,manips_vec = sample
+      
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape)))
+        
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
-        qFeat,tFeat,manips_vec,id_t = sample
-        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape)))
-        
-    
-        
+        qFeat,tFeat,manips_vec = sample
+       
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape)))
+

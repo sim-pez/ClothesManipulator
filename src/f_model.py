@@ -6,9 +6,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torchvision
-from f_dataloader import Data_Q_T,fast_loader
+from f_dataloader import Data_Q_T,fast_loader,Data_Query
 import parameters as par
 from tqdm import tqdm
+import h5py
+import os
 
 class Extractor(nn.Module):
     """
@@ -125,22 +127,34 @@ class LSTM_ManyToOne(nn.Module):
 
 if __name__=="__main__":
     torch.cuda.set_device(1)
-    test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST,shuffle=False)
-    test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
-                                          sampler=torch.utils.data.SequentialSampler(test_data),
-                                               num_workers=16,
+    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
+    train_loader=torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
+                                               
                                                drop_last=False)
     #test_loader=fast_loader(test_data,batch_size=32)
+    gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
+    test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
+    Data_test= h5py.File(par.DATA_TEST)
+    
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
+    test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
+    sampler=torch.utils.data.SequentialSampler(test_data),
+                                               
+                                               drop_last=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=8,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
     
     model.cuda()
    
     
-    for i, sample in enumerate(tqdm(test_loader)):
-        qFeat,tFeat,mani_vects,t_id = sample
-        print(tFeat.shape,qFeat.shape)
-        out,hidden=model(mani_vects,qFeat)
-        #print(out)
+    tq=tqdm(train_loader)
+    for i, sample in enumerate(tq):
+        qFeat,tFeat,manips_vec = sample
+        out,hidden=model(manips_vec,qFeat)
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape, out.shape)))
         
-        print(i,out.shape)
+    tq=tqdm(test_loader)
+    for i, sample in enumerate(tq):
+        qFeat,label_t,manips_vec = sample
+        out,hidden=model(manips_vec,qFeat)
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape,label_t.shape, out.shape)))
         

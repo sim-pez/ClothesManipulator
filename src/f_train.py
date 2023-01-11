@@ -27,7 +27,7 @@ class Trainer():
         self.loss=loss
         self.lr=lr
         self.optimizer = torch.optim.Adam(list(self.model.parameters()), lr=self.lr,betas=(0.9, 0.999))
-        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 10, 0.1)
+        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 5, 0.1)
         self.num_epochs=num_epochs
         self.date=datetime.datetime.now().strftime("%m-%d-%H:%M")
         self.log_dir=os.path.join(par.LOG_DIR,self.date)
@@ -44,8 +44,7 @@ class Trainer():
         self.model.train() #set the mode to train so it can update gradients
         tq=tqdm(self.data_loader_train)
         for i, sample in enumerate(tq):
-            qFeat, tFeat, mani_vects,id_t = sample
-            
+            qFeat, tFeat, mani_vects = sample
             mani_vects.cuda()
             self.model.zero_grad()
             out,hidden = self.model(mani_vects,qFeat)
@@ -64,7 +63,7 @@ class Trainer():
         with torch.no_grad():
             tq=tqdm(self.data_loader_test)
             for i, sample in enumerate(tq):
-                qFeat,tFeat,mani_vects,id_t = sample
+                qFeat,label_t,mani_vects = sample
                 out,hidden = self.model(mani_vects,qFeat)
                 predicted_tfeat.append(out.cpu().numpy())
                # tFeat.cuda()
@@ -131,26 +130,23 @@ class Trainer():
 
 
 if __name__=="__main__":
-   # print(torch.cuda.memory_stats())
+   
     torch.cuda.set_device(1)
-    #torch.multiprocessing.set_start_method('spawn')
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    # load dataset
     print('Loading dataset...')
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
     test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
     Data_test= h5py.File(par.DATA_TEST)
     if(par.N==1 or par.VAL_ORIGINAL) :
         query_labels=Data_test['t_label']
-        test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
+        
     else:
         t_id=Data_test['t']#id del target 
         query_labels=test_labels[t_id]
-        test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
-    #del t_id,Data_test
-    ###################################ààà
+        #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
+
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
-    
     
     
     train_loader=torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
@@ -163,7 +159,7 @@ if __name__=="__main__":
     
     loss=torch.nn.MSELoss().cuda()
     trainer=Trainer(gpu=1,data_loader_train=train_loader, data_loader_test=test_loader,
-    loss=loss,model=model,gallery_feat=gallery_feat,test_labels=test_labels,query_labels=query_labels,num_epochs=100,lr=0.001)
+    loss=loss,model=model,gallery_feat=gallery_feat,test_labels=test_labels,query_labels=query_labels,num_epochs=par.NUM_EPOCH,lr=par.LR)
     trainer.run()
     
 
