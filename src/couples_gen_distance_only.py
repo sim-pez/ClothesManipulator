@@ -168,8 +168,8 @@ def check_couples(file_root, img_root_path, N, mode):
     
 if __name__ == '__main__':
     
-    N = 6
-    max_manip = 10
+    N = 8
+    max_manip = 50
     mode = 'train'
 
     file_root = 'splits/Shopping100k'
