@@ -85,7 +85,7 @@ print(out.shape)
 class LSTM_ManyToOne(nn.Module):
      # domanda è megio tenere i chunk? e addestrare rispetto ai chunck?
      #c_0: tensor of shape (D * \text{num\_layers}, H_{cell})(D∗num_layers,H cell)
-    def __init__(self, input_size=151,seq_len=8, output_size=4080, hidden_dim=4080, n_layers=1, drop_prob=0.5):
+    def __init__(self, input_size=151,seq_len=8, output_size=4080, hidden_dim=4080, n_layers=1, drop_prob=0.5,train_fc_all_step=False):
         super(LSTM_ManyToOne, self).__init__()
         self.output_size = output_size
         self.n_layers = n_layers
@@ -94,9 +94,22 @@ class LSTM_ManyToOne(nn.Module):
         self.seq_len=seq_len
         self.lstm = nn.LSTM(input_size, hidden_dim, n_layers, dropout=drop_prob, batch_first=True,bidirectional=False)
         self.dropout = nn.Dropout(drop_prob)
+        self.train_fc_all_step=train_fc_all_step
         self.fc=nn.Sequential(nn.Linear(hidden_dim,output_size),
                                      nn.ReLU(),
                                      nn.Linear(output_size,output_size))
+        #add_fully connected layer for every time step:
+        fc_list=[]
+        if(self.seq_len!=1 and self.train_fc_all_step):
+            for n in range(self.seq_len-1):
+                fc_list.append(nn.Dropout(drop_prob),
+                                nn.Sequential(nn.Linear(hidden_dim,output_size),
+                                nn.ReLU(),
+                                nn.Linear(output_size,output_size)))
+            self.fc_list = nn.ModuleList(fc_list)
+                
+           
+
         print("Model is loaded...")
         
     #ad ogni iterazione viene passato il hidden precedente e il nuovo input    
@@ -104,24 +117,35 @@ class LSTM_ManyToOne(nn.Module):
         batch_size = x.size(0)
         hidden=self.init_hidden(batch_size,qFeat)
         x = x.float().cuda() #is equivalent to self.to(torch.int64)
-        lstm_out, hidden = self.lstm(x, hidden)
+        lstm_out, hidden = self.lstm(x, hidden)#(32,8,4080)
         
         #take the last output
-        lstm_out = lstm_out.contiguous()
-        lstm_out = lstm_out[:,-1,:]  
+        lstm_out_total = lstm_out.contiguous()
+        
+        lstm_out = lstm_out_total[:,-1,:]  
         #  contiguous: this function returns the self tensor \\ copy of tensor
         # view: Returns a new tensor with the same data as the self tensor but of a different shape
         #each new view dimension must either be a subspace of an original dimension, or only span across original dimensions 
         out = self.dropout(lstm_out)
         out = self.fc(out)
-        return out, hidden
+        if(self.seq_len!=1 and self.train_fc_all_step):
+            out_all= []            
+            for n,layer in enumerate(self.fc_list):
+                out_all.append(layer(lstm_out_total[:,n,:]))
+        else:
+            out_all=lstm_out_total[:,:self.seq_len-1,:]
+       
+        return out, out_all
     def init_hidden(self, batch_size,qFeat):
         ########init_hidden
         #TODO init also c_0 with qFeat
+        
         h_0=tuple([ qFeat for k in range (self.n_layers)])
         h_0=torch.stack(h_0,dim=0)
         #print(h_0.shape)
-        c_0=torch.zeros(self.n_layers, batch_size, self.hidden_dim,dtype=torch.float32)
+        #c_0=torch.zeros(self.n_layers, batch_size, self.hidden_dim,dtype=torch.float32)
+        c_0=tuple([ qFeat for k in range (self.n_layers)])
+        c_0=torch.stack(c_0,dim=0)
         hidden=(h_0.cuda(),c_0.cuda())
         return hidden
 

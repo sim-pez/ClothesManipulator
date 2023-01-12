@@ -11,6 +11,7 @@ import pickle
 from f_utils import listify_manip, create_n_manip
 
 class Data_Q_T(data.Dataset):
+    #TODO lanciare Data set N=1 con lughezza 8 
 
     def __init__(self, filename_data,feat_file,label_file):
         """
@@ -23,18 +24,12 @@ class Data_Q_T(data.Dataset):
         """
         super(Data_Q_T, self).__init__()
         self.N=par.N
-        
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
-        
         self.q=self.hf['q']
         self.t=self.hf['t']
         self.feat=np.load(feat_file)
-        if (self.N==1):
-            self.manips=self.hf['manips_vec']
-        else:
-            self.labels=np.loadtxt(label_file,dtype=int)
-        
+        self.labels=np.loadtxt(label_file,dtype=int)
         print("Dataset is loaded: ",self.__len__())
         
         
@@ -45,18 +40,9 @@ class Data_Q_T(data.Dataset):
         q_id=self.q[indexes]
         q=self.feat[q_id]
         t=self.feat[t_id]
-        
-        if(self.N==1):
-            manips=torch.tensor(self.manips[indexes])
-            manips = manips.unsqueeze(0)
-            
-        else:
-            label_q=self.labels[q_id]
-            label_t=self.labels[t_id]
-        #print( label_q.shape, label_t.shape,q_id)
-            manips=create_n_manip(par.N,label_q,label_t)
-        
-
+        label_q=self.labels[q_id]
+        label_t=self.labels[t_id]
+        manips=create_n_manip(self.N,label_q,label_t)
         return (q, t,manips)
 
 
@@ -65,7 +51,7 @@ class Data_Q_T(data.Dataset):
         return hf
 
     def __len__(self):
-        return self.hf['q'].shape[0]
+        return self.q.shape[0]
 
 
 class RandomBatchSampler(data.Sampler):
@@ -138,34 +124,23 @@ class Data_Query(data.Dataset):
         self.VAL=par.VAL_ORIGINAL
         self.hf=Data_test
         self.q=self.hf['q']#id_query
+        self.t=self.hf['t']
         self.feat=gallery_feat
-        if (self.N==1 or self.VAL ):
-            self.manips=self.hf['manips_vec']
-            self.label_t=self.hf['t_label']
-        else:
-            self.t=self.hf['t']
-            self.labels=label_data
+        self.labels=label_data
+        
         print("Dataset is loaded: ",self.__len__())
     def __getitem__(self, indexes):
          
         q_id=self.q[indexes]
+        t_id=self.t[indexes]
+        #t=self.feat[t_id]
         q=self.feat[q_id]
-        if(self.N==1 or self.VAL):
-            manips=torch.tensor(self.manips[indexes])
-            manips = manips.unsqueeze(0)
-            label_t=self.label_t[indexes]
-            
-        else:
-            t_id=self.t[indexes]
-            #t=self.feat[t_id]
-            label_q=self.labels[q_id]
-            label_t=self.labels[t_id]
-            #print( label_q.shape, label_t.shape,q_id)
-            manips=create_n_manip(par.N,label_q,label_t)
-            
+        label_q=self.labels[q_id]
+        label_t=self.labels[t_id]
+        manips=create_n_manip(self.N,label_q,label_t)
         return (q,label_t,manips)
     def __len__(self):
-        return self.hf['q'].shape[0]
+        return self.q.shape[0]
 
 
 

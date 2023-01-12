@@ -1,12 +1,16 @@
 #%%
 import os
-MODEL_EVAL="01-05-15:44"
-VAL_ORIGINAL=False
+MODEL_EVAL="01-11-15:01"
 NUM_LAYER=2
-N = 1
-NUM_EPOCH=20
-LR=0.001
+NUM_EPOCH=70
+LR=0.01#0.01 try this
+step_decay=5
+weight_decay=0.5
+VAL_ORIGINAL=False
+contin_training=False#!!!#
+pretrain_model= "01-12-15:00" #"01-12-09:50" #"01-11-18:19"
 name_data_set="couples_N_1.h5"
+N = 8
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR=lambda x,y :os.path.join(y,"multi_manip/{}".format(x))
 DATA_IDS=lambda y: os.path.join(y,name_data_set)

@@ -27,7 +27,7 @@ class Trainer():
         self.loss=loss
         self.lr=lr
         self.optimizer = torch.optim.Adam(list(self.model.parameters()), lr=self.lr,betas=(0.9, 0.999))
-        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer, 5, 0.1)
+        self.lr_scheduler = lr_scheduler.StepLR(self.optimizer,par.step_decay, par.weight_decay)
         self.num_epochs=num_epochs
         self.date=datetime.datetime.now().strftime("%m-%d-%H:%M")
         self.log_dir=os.path.join(par.LOG_DIR,self.date)
@@ -104,11 +104,15 @@ class Trainer():
 
     def run(self):
         previous_best_avg_test_acc = 0.0
+        with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
+            f.write( "parameter of model:\n N:{n},num of layer:{layer},num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
+                     n=par.N, epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
         for epoch in range(self.num_epochs):
             avg_train_loss = self.train()
-            torch.save(self.model.state_dict(), os.path.join(self.log_dir, "ckpt_%d.pkl" % (epoch + 1)))
-            print('Saved checkpoints at {dir}/ckpt_{epoch}.pkl , avr loss {l}'.format(dir=self.log_dir, epoch=epoch+1, l=avg_train_loss))
-            
+            if (epoch%5==0):
+                torch.save(self.model.state_dict(), os.path.join(self.log_dir, "ckpt_%d.pkl" % (epoch + 1)))
+                print('Saved new checkpoint  ckpt_{epoch}.pkl , avr loss {l}'.format( epoch=epoch+1, l=avg_train_loss))
+                
             avg_test_acc= self.eval()
 
             result="Epoch {e}, Train_loss: {l}, test_acc:{a} \n".format(e=epoch + 1,l=avg_train_loss,a=avg_test_acc)
@@ -156,7 +160,10 @@ if __name__=="__main__":
                                                drop_last=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=par.N,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
     # create the folder to save log, checkpoints and args config
-    
+    if(par.contin_training):
+        path_pretrained_model=os.path.join(par.LOG_DIR,"{pretrain_model}/best_model.pkl".format(pretrain_model=par.pretrain_model))
+        model.load_state_dict(torch.load(path_pretrained_model))
+        print("Pre trained model is loaded...")
     loss=torch.nn.MSELoss().cuda()
     trainer=Trainer(gpu=1,data_loader_train=train_loader, data_loader_test=test_loader,
     loss=loss,model=model,gallery_feat=gallery_feat,test_labels=test_labels,query_labels=query_labels,num_epochs=par.NUM_EPOCH,lr=par.LR)
