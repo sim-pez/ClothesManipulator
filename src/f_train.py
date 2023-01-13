@@ -105,8 +105,8 @@ class Trainer():
     def run(self):
         previous_best_avg_test_acc = 0.0
         with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
-            f.write( "parameter of model:\n N:{n},num of layer:{layer},num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
-                     n=par.N, epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
+            f.write( "parameter of model:\nDataset:{data} N:{n},num of layer:{layer},num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
+                     n=par.N,data=par.name_data_set ,epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
         for epoch in range(self.num_epochs):
             avg_train_loss = self.train()
             if (epoch%5==0):
@@ -115,7 +115,7 @@ class Trainer():
                 
             avg_test_acc= self.eval()
 
-            result="Epoch {e}, Train_loss: {l}, test_acc:{a} \n".format(e=epoch + 1,l=avg_train_loss,a=avg_test_acc)
+            result="Epoch {e}, Train_loss: {l}, test_acc:{a} ,lr:{lr}\n".format(lr= self.lr_scheduler.get_lr(),e=epoch + 1,l=avg_train_loss,a=avg_test_acc)
             with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
                 f.write(result)
             print(result)

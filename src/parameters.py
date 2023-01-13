@@ -1,16 +1,17 @@
 #%%
 import os
-MODEL_EVAL="01-11-15:01"
-NUM_LAYER=2
-NUM_EPOCH=70
-LR=0.01#0.01 try this
-step_decay=5
-weight_decay=0.5
+MODEL_EVAL="01-12-22:44"
+NUM_LAYER=3
+NUM_EPOCH=100
+LR=0.001#0.01 try this
+step_decay=10
+weight_decay=0.6
 VAL_ORIGINAL=False
 contin_training=False#!!!#
-pretrain_model= "01-12-15:00" #"01-12-09:50" #"01-11-18:19"
-name_data_set="couples_N_1.h5"
+pretrain_model= "" #"01-12-09:50" #"01-11-18:19"
+name_data_set="couples_N_1_amazon.h5"
 N = 8
+CREATE_ZERO_MANIP_ONLY = True
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR=lambda x,y :os.path.join(y,"multi_manip/{}".format(x))
 DATA_IDS=lambda y: os.path.join(y,name_data_set)
@@ -19,7 +20,7 @@ DATA_TRAIN_DIR=DATA_DIR("train",ROOT_DIR)
 DATA_TEST_DIR=DATA_DIR("test",ROOT_DIR)
 DATA_TRAIN=DATA_IDS(DATA_TRAIN_DIR)
 if VAL_ORIGINAL:
-    DATA_TEST= os.path.join(DATA_TEST_DIR,"couples_N_1.h5")
+    DATA_TEST= os.path.join(DATA_TEST_DIR,"couples_N_1_amazon.h5")
 else:
     DATA_TEST=DATA_IDS(DATA_TEST_DIR)
 

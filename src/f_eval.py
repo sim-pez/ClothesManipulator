@@ -89,19 +89,13 @@ if __name__ == '__main__':
     #path="/home/falhamdoosh/disentagledFeaturesExtractor/multi_manip/test/couples_N_6_small.h5"
     path=par.DATA_TEST
     Data_test = h5py.File(path)
-    val= par.VAL_ORIGINAL
-    if(par.N==1 or val ):
-        query_labels=Data_test['t_label']
-        
-    else:
-        t_id=Data_test['t']#id del target 
-        query_labels=test_labels[t_id]
+    t_id=Data_test['t']#id del target 
+    query_labels=test_labels[t_id]
         #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
 
     test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
     gallery_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
                                           sampler=torch.utils.data.SequentialSampler(test_data),
-                                               num_workers=16,
                                                drop_last=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=par.N,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)
     last_train=par.MODEL_EVAL
@@ -120,8 +114,8 @@ if __name__ == '__main__':
             predicted_tfeat.append(feat.cpu().numpy())
             out_all.append(out_all_batch.cpu().numpy())
     predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
-    out_all=np.concatenate(out_all, axis=0)
-    print("Shape of out_all after concatinating",len(out_all),len(out_all[0]),len(out_all[0][0]))
+    #out_all=np.concatenate(out_all, axis=0)
+    #print("Shape of out_all after concatinating",len(out_all),len(out_all[0]),len(out_all[0][0]))
     
    # np.save(os.path.join(par.DATA_TEST_DIR, 'predicted_tfeats.npy'),predicted_tfeat )
    # print('Saved indexed features at {dir}/predicted_tfeats.npy'.format(dir=par.DATA_TEST_DIR))
@@ -133,8 +127,8 @@ if __name__ == '__main__':
     database = gallery_feat
     queries = predicted_tfeat# Dipende dallo step di tempo
     k = 50
-    #calc_accuracy(database,queries,query_labels,test_labels,k,"last step",dim)
-    eval_all=True
+    calc_accuracy(database,queries,query_labels,test_labels,k,"last step",dim)
+    eval_all=False
     if(eval_all):
         for n in range(par.N-1):
             queries=out_all[:,n,:].copy(order='C')

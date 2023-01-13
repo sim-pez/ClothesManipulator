@@ -4,6 +4,7 @@ import pickle
 import random
 from utils import split_labels
 from pprint import pprint
+from parameters import CREATE_ZERO_MANIP_ONLY, N
 
 
 with open(par.FILE_SPLIT_INDEX, 'rb') as fp:
@@ -28,11 +29,19 @@ def listify_manip(multi_manip):
     manip_array=np.zeros((12,151),dtype=int)
     
     for j in range(manip_array.shape[0]):
-        
         start, end=cut_index[j][0], cut_index[j][1]
         manip_array[j][start:end] = Nsplit[j]
+
+    manip_list = manip_array[~np.all(manip_array == 0, axis=1)] 
+
+    if CREATE_ZERO_MANIP_ONLY:
+        for _ in range(len(manip_list), N):
+            zero_manip = np.zeros(len(multi_manip), dtype = int)
+            manip_list = np.insert(manip_list, 0, zero_manip, 0)
     
-    return manip_array[~np.all(manip_array == 0, axis=1)]
+    manip_list = manip_list[np.random.permutation(len(manip_list))]
+
+    return manip_list
 
 
 def create_n_manip(N, q_lbl, t_lbl):
@@ -212,6 +221,7 @@ def create_n_manip(N, q_lbl, t_lbl):
 
     orig_manip_list = np.copy(manip_list)
     original_distance = len(manip_list)
+
 
     remaining = N - original_distance
 
