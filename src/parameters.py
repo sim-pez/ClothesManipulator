@@ -1,17 +1,19 @@
 #%%
 import os
-MODEL_EVAL="01-12-22:44"
-NUM_LAYER=3
+MODEL_EVAL="01-13-15:56"
+NUM_LAYER=2
 NUM_EPOCH=100
 LR=0.001#0.01 try this
-step_decay=10
+step_decay=20
 weight_decay=0.6
 VAL_ORIGINAL=False
 contin_training=False#!!!#
 pretrain_model= "" #"01-12-09:50" #"01-11-18:19"
-name_data_set="couples_N_1_amazon.h5"
+name_data_set="couples_N_1_4_6_8_mixed.h5"
+dataset_distance=8
+all_data={"couples_N_1_amazon.h5":1,"couples_N_4_small.h5":4,"couples_N_6_small.h5","couples_N_8_small.h5":8,"couples_N_1_4_6_8_mixed.h5":8}
 N = 8
-CREATE_ZERO_MANIP_ONLY = True
+CREATE_ZERO_MANIP_ONLY = False# sul file 01-13-15:56 era true. 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR=lambda x,y :os.path.join(y,"multi_manip/{}".format(x))
 DATA_IDS=lambda y: os.path.join(y,name_data_set)

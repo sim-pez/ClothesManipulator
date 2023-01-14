@@ -46,9 +46,9 @@ def calc_accuracy(database,queries,query_labels,test_labels,k,step,dim):
                 hits += 1
                 break
         tq.set_description("Num of hit {h}".format(h=hits))
-
-    print("Total hits",hits)
-    print('Top@{k} accuracy: {acc}'.format(k=k, acc=(hits/num_query)*100))
+    
+    result_string='Top@{k} accuracy: {acc} ,Total hits{h}'.format(k=k, acc=(hits/num_query)*100 , h=hits)
+    print(result_string)
     """ 
     #compute NDCG
     ndcg = []
@@ -78,6 +78,7 @@ def calc_accuracy(database,queries,query_labels,test_labels,k,step,dim):
     print    
     print('NDCG@{k}: {ndcg}'.format(k=k, ndcg=np.mean(ndcg)))
     """
+    return result_string
 
 if __name__ == '__main__':
     torch.cuda.set_device(1)
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     query_labels=test_labels[t_id]
         #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
 
-    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels,N=par.N)
     gallery_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
                                           sampler=torch.utils.data.SequentialSampler(test_data),
                                                drop_last=False)
@@ -121,18 +122,41 @@ if __name__ == '__main__':
    # print('Saved indexed features at {dir}/predicted_tfeats.npy'.format(dir=par.DATA_TEST_DIR))
     
      
-
+    log_dir=os.path.join(par.LOG_DIR,"log_eval.txt")
+    with open(log_dir, 'a') as f:
+            f.write( "parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea}, \n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},Datatest:{name_data_set}".format(name_data_set=par.name_data_set,pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
+                     n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.name_data_set ,epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
+      
     #evaluate the top@k results
     dim = 4080  # dimension
     database = gallery_feat
     queries = predicted_tfeat# Dipende dallo step di tempo
     k = 50
-    calc_accuracy(database,queries,query_labels,test_labels,k,"last step",dim)
+    print("N is :",par.N)
+    res=calc_accuracy(database,queries,query_labels,test_labels,k,"last step",dim)
+    with open(log_dir, 'a') as f:
+        f.write("\n N is :",par.N, res)
     eval_all=False
+    dataset_distance=par.all_data[par.name_data_set]
     if(eval_all):
-        for n in range(par.N-1):
-            queries=out_all[:,n,:].copy(order='C')
-            calc_accuracy(database,queries,query_labels,test_labels,k,n,dim)
+        for n in range(par.N):
+            if( n>=dataset_distance):
+                test_data.__set_N__(n)
+                print("N is :",n)
+                predicted_tfeat = []
+                with torch.no_grad():
+                    for i, sample in enumerate(tqdm(gallery_loader)):
+                        qFeat,label_t,mani_vects= sample
+                        feat,out_all_batch = model(mani_vects,qFeat)
+                        #TODO check if we shoul do normalization!
+                        predicted_tfeat.append(feat.cpu().numpy())
+                predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
+                queries = predicted_tfeat
+                #queries=out_all[:,n,:].copy(order='C')
+
+                res=calc_accuracy(database,queries,query_labels,test_labels,k,n,dim)
+                with open(log_dir, 'a') as f:
+                    f.write("\n N is :",n, res)
      
 
 

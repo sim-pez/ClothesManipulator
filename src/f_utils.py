@@ -35,9 +35,8 @@ def listify_manip(multi_manip):
     manip_list = manip_array[~np.all(manip_array == 0, axis=1)] 
 
     if CREATE_ZERO_MANIP_ONLY:
-        for _ in range(len(manip_list), N):
-            zero_manip = np.zeros(len(multi_manip), dtype = int)
-            manip_list = np.insert(manip_list, 0, zero_manip, 0)
+        zero_manips = np.zeros((N - len(manip_list),len(multi_manip)), dtype = int)
+        concatenated = np.concatenate((manip_list, zero_manips))
     
     manip_list = manip_list[np.random.permutation(len(manip_list))]
 
@@ -252,7 +251,7 @@ def create_n_manip(N, q_lbl, t_lbl):
         elif remaining == 0:
             break
         else:
-            print(f"distance is {remaining}")
+            print(f"original distance for labels is {original_distance}!")
             raise Exception("distance value not accepted")
 
         assert N - remaining == len(manip_list)

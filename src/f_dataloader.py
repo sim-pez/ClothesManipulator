@@ -13,7 +13,7 @@ from f_utils import listify_manip, create_n_manip
 class Data_Q_T(data.Dataset):
     #TODO lanciare Data set N=1 con lughezza 8 
 
-    def __init__(self, filename_data,feat_file,label_file):
+    def __init__(self, filename_data,feat_file,label_file,N=par.N):
         """
         Read file Couples_N_8.txt,maipolations_N_8.txt
 
@@ -23,11 +23,11 @@ class Data_Q_T(data.Dataset):
         divider usanndo 
         """
         super(Data_Q_T, self).__init__()
-        self.N=par.N
+        self.N=N
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
-        self.q=self.hf['q']
-        self.t=self.hf['t']
+       # self.q=self.hf['q']
+       # self.t=self.hf['t']
         self.feat=np.load(feat_file)
         self.labels=np.loadtxt(label_file,dtype=int)
         print("Dataset is loaded: ",self.__len__())
@@ -36,8 +36,8 @@ class Data_Q_T(data.Dataset):
     def __getitem__(self, indexes):
        # t_id=self.hf["t"][indexes]
         #q_id=self.hf["q"][indexes]
-        t_id=self.t[indexes]
-        q_id=self.q[indexes]
+        t_id=self.hf['t'][indexes]
+        q_id=self.hf['q'][indexes]
         q=self.feat[q_id]
         t=self.feat[t_id]
         label_q=self.labels[q_id]
@@ -51,7 +51,7 @@ class Data_Q_T(data.Dataset):
         return hf
 
     def __len__(self):
-        return self.q.shape[0]
+        return self.hf['t'].shape[0]
 
 
 class RandomBatchSampler(data.Sampler):
@@ -109,7 +109,7 @@ def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl
     )
 
 class Data_Query(data.Dataset):
-    def __init__(self,Data_test, gallery_feat,label_data):
+    def __init__(self,Data_test, gallery_feat,label_data,N=par.N):
         """
         Data_tests (q,t) gallery_feat
         Read file Couples_N_8.txt,maipolations_N_8.txt
@@ -120,19 +120,19 @@ class Data_Query(data.Dataset):
         divider usanndo 
         """
         super(Data_Query, self).__init__()
-        self.N=par.N
+        self.N=N
         self.VAL=par.VAL_ORIGINAL
         self.hf=Data_test
-        self.q=self.hf['q']#id_query
-        self.t=self.hf['t']
+        #self.q=self.hf['q']#id_query
+        #self.t=self.hf['t']
         self.feat=gallery_feat
         self.labels=label_data
         
         print("Dataset is loaded: ",self.__len__())
     def __getitem__(self, indexes):
-         
-        q_id=self.q[indexes]
-        t_id=self.t[indexes]
+        
+        q_id=self.hf['q'][indexes]
+        t_id=self.hf['t'][indexes]
         #t=self.feat[t_id]
         q=self.feat[q_id]
         label_q=self.labels[q_id]
@@ -140,7 +140,9 @@ class Data_Query(data.Dataset):
         manips=create_n_manip(self.N,label_q,label_t)
         return (q,label_t,manips)
     def __len__(self):
-        return self.q.shape[0]
+        return self.hf['t'].shape[0]
+    def __set_N__(self,newN):
+        self.N=newN
 
 
 
