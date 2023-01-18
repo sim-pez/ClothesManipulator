@@ -2,9 +2,10 @@ import numpy as np
 import parameters as par
 import pickle
 import random
-from utils import split_labels
-from pprint import pprint
-from parameters import CREATE_ZERO_MANIP_ONLY, N
+from parameters import CREATE_ZERO_MANIP_ONLY
+
+import warnings
+warnings.simplefilter('once', RuntimeWarning)
 
 
 with open(par.FILE_SPLIT_INDEX, 'rb') as fp:
@@ -23,7 +24,7 @@ def findCutIndexInterval(index):
                 return ci_low, ci_high
 
 
-def listify_manip(multi_manip):
+def listify_manip(multi_manip, N):
 
     Nsplit=np.split(multi_manip, split_index[:-1])
     manip_array=np.zeros((12,151),dtype=int)
@@ -34,11 +35,7 @@ def listify_manip(multi_manip):
 
     manip_list = manip_array[~np.all(manip_array == 0, axis=1)] 
 
-    if CREATE_ZERO_MANIP_ONLY:
-        zero_manips = np.zeros((N - len(manip_list),len(multi_manip)), dtype = int)
-        concatenated = np.concatenate((manip_list, zero_manips))
-    
-    manip_list = manip_list[np.random.permutation(len(manip_list))]
+    manip_list = manip_list[np.random.permutation(len(manip_list))] 
 
     return manip_list
 
@@ -216,13 +213,18 @@ def create_n_manip(N, q_lbl, t_lbl):
         return manip_list, remaining
 
     multi_manip =  np.subtract(t_lbl, q_lbl)
-    manip_list = listify_manip(multi_manip)
-
-    orig_manip_list = np.copy(manip_list)
+    manip_list = listify_manip(multi_manip, N)
     original_distance = len(manip_list)
+    orig_manip_list = np.copy(manip_list)
+    
+
+    if CREATE_ZERO_MANIP_ONLY and (N - len(manip_list)) > 0:
+        zero_manips = np.zeros((N - len(manip_list),len(multi_manip)), dtype = int)
+        manip_list = np.concatenate((manip_list, zero_manips))
+        assert N == len(manip_list)
 
 
-    remaining = N - original_distance
+    remaining = N - len(manip_list)
 
     if remaining > N and not 0 <= original_distance <= 8:
         raise Exception("q and t had not to be selected!")
@@ -236,7 +238,6 @@ def create_n_manip(N, q_lbl, t_lbl):
                 if not success:
                     manip_list = np.copy(orig_manip_list)
                     remaining = N - original_distance
-                    second_loop = True
         elif remaining >= 2:
             if original_distance == 0:
                 manip_list, remaining = addForwardBackward(manip_list, remaining, q_lbl)
@@ -251,9 +252,12 @@ def create_n_manip(N, q_lbl, t_lbl):
         elif remaining == 0:
             break
         else:
-            print(f"original distance for labels is {original_distance}!")
-            raise Exception("distance value not accepted")
+            warnings.warn("There are couple wich distance is > N!", RuntimeWarning)
+            del_idx = list(range(len(manip_list)))
+            random.shuffle(del_idx)
+            manip_list = np.delete(manip_list, del_idx[:(-remaining)],0)
+            return manip_list
 
         assert N - remaining == len(manip_list)
 
-    return manip_list
+    return manip_list, original_distance

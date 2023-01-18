@@ -109,9 +109,9 @@ if __name__ == '__main__':
     out_all=[]
     with torch.no_grad():
         for i, sample in enumerate(tqdm(gallery_loader)):
-            qFeat,label_t,mani_vects= sample
-            feat,out_all_batch = model(mani_vects,qFeat)
-            #TODO check if we shoul do normalization!
+            qFeat,label_t,mani_vects,legnths= sample
+            feat,out_all_batch = model(mani_vects,qFeat,legnths)
+            
             predicted_tfeat.append(feat.cpu().numpy())
             out_all.append(out_all_batch.cpu().numpy())
     predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
@@ -123,10 +123,12 @@ if __name__ == '__main__':
     
      
     log_dir=os.path.join(par.LOG_DIR,"log_eval.txt")
+    """
+    
     with open(log_dir, 'a') as f:
             f.write( "parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea}, \n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},Datatest:{name_data_set}".format(name_data_set=par.name_data_set,pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
                      n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.name_data_set ,epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
-      
+    """
     #evaluate the top@k results
     dim = 4080  # dimension
     database = gallery_feat
@@ -135,28 +137,27 @@ if __name__ == '__main__':
     print("N is :",par.N)
     res=calc_accuracy(database,queries,query_labels,test_labels,k,"last step",dim)
     with open(log_dir, 'a') as f:
-        f.write("\n N is :",par.N, res)
-    eval_all=False
-    dataset_distance=par.all_data[par.name_data_set]
+        f.write("\n N is :{n}, res: {res}".format(n=par.N,res=res))
+    eval_all=True
+    #dataset_distance=par.all_data[par.name_data_set]
     if(eval_all):
-        for n in range(par.N):
-            if( n>=dataset_distance):
-                test_data.__set_N__(n)
-                print("N is :",n)
-                predicted_tfeat = []
-                with torch.no_grad():
-                    for i, sample in enumerate(tqdm(gallery_loader)):
-                        qFeat,label_t,mani_vects= sample
-                        feat,out_all_batch = model(mani_vects,qFeat)
-                        #TODO check if we shoul do normalization!
-                        predicted_tfeat.append(feat.cpu().numpy())
-                predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
-                queries = predicted_tfeat
-                #queries=out_all[:,n,:].copy(order='C')
+        for n in range(1,par.N):
+            test_data.__set_N__(n)
+            print("N is :",n)
+            predicted_tfeat = []
+            with torch.no_grad():
+                for i, sample in enumerate(tqdm(gallery_loader)):
+                    qFeat,label_t,mani_vects,legnths= sample
+                    feat,out_all_batch = model(mani_vects,qFeat,legnths)
+                    #TODO check if we shoul do normalization!
+                    predicted_tfeat.append(feat.cpu().numpy())
+            predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
+            queries = predicted_tfeat
+            #queries=out_all[:,n,:].copy(order='C')
 
-                res=calc_accuracy(database,queries,query_labels,test_labels,k,n,dim)
-                with open(log_dir, 'a') as f:
-                    f.write("\n N is :",n, res)
+            res=calc_accuracy(database,queries,query_labels,test_labels,k,n,dim)
+            with open(log_dir, 'a') as f:
+                f.write("\n N is :{n1}, res: {res}".format(n1=n,res=res))
      
 
 

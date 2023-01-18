@@ -11,6 +11,17 @@ import parameters as par
 from tqdm import tqdm
 import h5py
 import os
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
+
+import datetime
+import torch.optim.lr_scheduler as lr_scheduler
+import faiss
+
+torch.manual_seed(100)
+
+
+
 
 class Extractor(nn.Module):
     """
@@ -113,33 +124,45 @@ class LSTM_ManyToOne(nn.Module):
         print("Model is loaded...")
         
     #ad ogni iterazione viene passato il hidden precedente e il nuovo input    
-    def forward(self, x, qFeat):
+    def forward(self, x, qFeat,lengths):
+        # Pack the input
         batch_size = x.size(0)
+       # lengths, idx_sort = torch.sort(lengths, dim=0, descending=True)
+        #_, idx_unsort = torch.sort(idx_sort, dim=0)
+       # x = x[idx_sort]
+       # qFeat=qFeat[idx_sort]
+        x = x.float().cuda()
+        #print(x.dtype)
+       
+        #lengths = lengths.clone().detach().long().cpu()#torch.tensor(lengths, dtype=torch.int64).cpu()
+        #print(type(lengths),lengths.shape,lengths.dtype, lengths.device)
+        #x = pack_padded_sequence(x, lengths= lengths, batch_first=True, enforce_sorted=False)
+        #print(x.batch_sizes)
+        #print(x[0].shape)
+        qFeat=qFeat.cuda()
         hidden=self.init_hidden(batch_size,qFeat)
-        x = x.float().cuda() #is equivalent to self.to(torch.int64)
+        
         lstm_out, hidden = self.lstm(x, hidden)#(32,8,4080)
-        
+        #print(lstm_out.batch_sizes)
+        #print(lstm_out[0].shape)
+       # lstm_out, _ = pad_packed_sequence(lstm_out, batch_first=True)
+       # print(lstm_out[30][7])
+        #lstm_out =  lstm_out[idx_unsort]
         #take the last output
-        lstm_out_total = lstm_out.contiguous()
+        lstm_out= lstm_out.contiguous()
         
-        lstm_out = lstm_out_total[:,-1,:]  
+        lstm_out = lstm_out[:,-1,:]  
         #  contiguous: this function returns the self tensor \\ copy of tensor
         # view: Returns a new tensor with the same data as the self tensor but of a different shape
         #each new view dimension must either be a subspace of an original dimension, or only span across original dimensions 
+    
+        
         out = self.dropout(lstm_out)
         out = self.fc(out)
-        if(self.seq_len!=1 and self.train_fc_all_step):
-            out_all= []            
-            for n,layer in enumerate(self.fc_list):
-                out_all.append(layer(lstm_out_total[:,n,:]))
-        else:
-            out_all=lstm_out_total[:,:self.seq_len-1,:]
-       
-        return out, out_all
+      
+        return out, lstm_out
     def init_hidden(self, batch_size,qFeat):
         ########init_hidden
-        #TODO init also c_0 with qFeat
-        
         h_0=tuple([ qFeat for k in range (self.n_layers)])
         h_0=torch.stack(h_0,dim=0)
         #print(h_0.shape)
@@ -150,7 +173,8 @@ class LSTM_ManyToOne(nn.Module):
         return hidden
 
 if __name__=="__main__":
-    torch.cuda.set_device(1)
+
+    torch.cuda.set_device(0)
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
     train_loader=torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
                                                
@@ -172,13 +196,13 @@ if __name__=="__main__":
     
     tq=tqdm(train_loader)
     for i, sample in enumerate(tq):
-        qFeat,tFeat,manips_vec = sample
-        out,hidden=model(manips_vec,qFeat)
-        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape, out.shape)))
+        qFeat,tFeat,manips_vec,legnths= sample
+        out,hidden=model(manips_vec,qFeat,legnths)
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape, out.shape, legnths.shape)))
         
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
-        qFeat,label_t,manips_vec = sample
-        out,hidden=model(manips_vec,qFeat)
-        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape,label_t.shape, out.shape)))
-        
+        qFeat,label_t,manips_vec,legnths= sample
+        out,hidden=model(manips_vec,qFeat,legnths)
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape,label_t.shape, out.shape,legnths.shape)))
+  

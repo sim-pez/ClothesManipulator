@@ -44,11 +44,13 @@ class Trainer():
         self.model.train() #set the mode to train so it can update gradients
         tq=tqdm(self.data_loader_train)
         for i, sample in enumerate(tq):
-            qFeat, tFeat, mani_vects = sample
-            mani_vects.cuda()
+            qFeat, tFeat, mani_vects,legnths = sample
+            tFeat=tFeat.cuda()
             self.model.zero_grad()
-            out,hidden = self.model(mani_vects,qFeat)
+            
+            out,hidden = self.model(mani_vects,qFeat,legnths)
             out.cuda()
+            
             loss=self.loss(out,tFeat)#(batch_size,output_dim)
             tq.set_description("train: Loss batch numero :{ind} , value loss: {l}".format(ind=i, l=loss.item()))
             loss.backward()
@@ -63,8 +65,8 @@ class Trainer():
         with torch.no_grad():
             tq=tqdm(self.data_loader_test)
             for i, sample in enumerate(tq):
-                qFeat,label_t,mani_vects = sample
-                out,hidden = self.model(mani_vects,qFeat)
+                qFeat,label_t,mani_vects,legnths = sample
+                out,hidden = self.model(mani_vects,qFeat,legnths)
                 predicted_tfeat.append(out.cpu().numpy())
                # tFeat.cuda()
                 #out.cuda()
@@ -135,9 +137,8 @@ class Trainer():
 
 if __name__=="__main__":
    
-    torch.cuda.set_device(1)
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    torch.cuda.empty_cache()
+    torch.cuda.set_device(0)
+    #torch.set_default_tensor_type('torch.cuda.FloatTensor')
     print('Loading dataset...')
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
     test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)

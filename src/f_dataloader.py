@@ -11,8 +11,7 @@ import pickle
 from f_utils import listify_manip, create_n_manip
 
 class Data_Q_T(data.Dataset):
-    #TODO lanciare Data set N=1 con lughezza 8 
-
+   
     def __init__(self, filename_data,feat_file,label_file,N=par.N):
         """
         Read file Couples_N_8.txt,maipolations_N_8.txt
@@ -42,8 +41,8 @@ class Data_Q_T(data.Dataset):
         t=self.feat[t_id]
         label_q=self.labels[q_id]
         label_t=self.labels[t_id]
-        manips=create_n_manip(self.N,label_q,label_t)
-        return (q, t,manips)
+        manips,n=create_n_manip(self.N,label_q,label_t)
+        return (q, t,manips,n)
 
 
     def _load_h5_file_with_data(self, file_name):
@@ -78,7 +77,7 @@ class RandomBatchSampler(data.Sampler):
     def __iter__(self):
         for id in self.batch_ids:
             idx = torch.arange(id * self.batch_size, (id + 1) * self.batch_size)
-            for index in idx:# @Fatemah #TODO forse non serve questa for
+            for index in idx:
                 yield int(index)
         if int(self.n_batches) < self.n_batches:
             idx = torch.arange(int(self.n_batches) * self.batch_size, self.dataset_length)
@@ -137,8 +136,9 @@ class Data_Query(data.Dataset):
         q=self.feat[q_id]
         label_q=self.labels[q_id]
         label_t=self.labels[t_id]
-        manips=create_n_manip(self.N,label_q,label_t)
-        return (q,label_t,manips)
+        manips,n=create_n_manip(self.N,label_q,label_t)#TODO restituire la distanza N,usare self.N per la lunghezza della sequenza
+        #aggiungere i vettori zeri sempre in fondo
+        return (q,label_t,manips,n)
     def __len__(self):
         return self.hf['t'].shape[0]
     def __set_N__(self,newN):
@@ -167,13 +167,13 @@ if __name__=="__main__":
     
     tq=tqdm(train_loader)
     for i, sample in enumerate(tq):
-        qFeat,tFeat,manips_vec = sample
-      
-        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape)))
+        qFeat,tFeat,manips_vec,legnths = sample
+        print(legnths)
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
         
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
-        qFeat,tFeat,manips_vec = sample
+        qFeat,tFeat,manips_vec ,legnths= sample
        
-        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape)))
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
 
