@@ -124,7 +124,7 @@ class LSTM_ManyToOne(nn.Module):
         print("Model is loaded...")
         
     #ad ogni iterazione viene passato il hidden precedente e il nuovo input    
-    def forward(self, x, qFeat,lengths):
+    def forward(self, x, qFeat):
         # Pack the input
         batch_size = x.size(0)
        # lengths, idx_sort = torch.sort(lengths, dim=0, descending=True)
@@ -197,12 +197,12 @@ if __name__=="__main__":
     tq=tqdm(train_loader)
     for i, sample in enumerate(tq):
         qFeat,tFeat,manips_vec,legnths= sample
-        out,hidden=model(manips_vec,qFeat,legnths)
+        out,hidden=model(manips_vec,qFeat)
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape, out.shape, legnths.shape)))
         
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
         qFeat,label_t,manips_vec,legnths= sample
-        out,hidden=model(manips_vec,qFeat,legnths)
+        out,hidden=model(manips_vec,qFeat)
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape,label_t.shape, out.shape,legnths.shape)))
   

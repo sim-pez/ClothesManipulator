@@ -149,7 +149,7 @@ class Data_Query(data.Dataset):
 
 if __name__=="__main__":
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True,
                                                
                                                drop_last=True)
     #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
@@ -164,16 +164,42 @@ if __name__=="__main__":
                                                
                                                drop_last=False)
    
-    
+    def get_variable_legnth(manips_vec):
+        manips_vec=manips_vec.numpy()
+        f=lambda x: x[~np.all(x== 0, axis=1)]
+        list_manips=[[],[],[],[],[],[],[],[]]
+        id_x=[[],[],[],[],[],[],[],[]]
+        for i in range(len(manips_vec)):
+            l=f(manips_vec[i])
+            list_manips [len(l)-1].append(l)
+            id_x[len(l)-1].append(i)
+        return list_manips,id_x
+
+
+
+            
+  
+  
     tq=tqdm(train_loader)
     for i, sample in enumerate(tq):
         qFeat,tFeat,manips_vec,legnths = sample
-        print(legnths)
+        list_manips,id_x=get_variable_legnth(manips_vec)
+        index_per=np.random.permutation(len(list_manips))
+        for n in index_per:
+            list_manips_n=torch.tensor(list_manips[n])
+            qFeat_n=qFeat[id_x[n]]
+            tFeat_n=tFeat[id_x[n]]
+           
+        
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
         
+        break
+    """
+  
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
         qFeat,tFeat,manips_vec ,legnths= sample
        
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
-
+        
+    """   

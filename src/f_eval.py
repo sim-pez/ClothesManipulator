@@ -81,7 +81,7 @@ def calc_accuracy(database,queries,query_labels,test_labels,k,step,dim):
     return result_string
 
 if __name__ == '__main__':
-    torch.cuda.set_device(1)
+    torch.cuda.set_device(0)
     #load_pretrained_model
     mode="test"
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
@@ -110,7 +110,13 @@ if __name__ == '__main__':
     with torch.no_grad():
         for i, sample in enumerate(tqdm(gallery_loader)):
             qFeat,label_t,mani_vects,legnths= sample
-            feat,out_all_batch = model(mani_vects,qFeat,legnths)
+            
+            #manips_vec=mani_vects.numpy()#
+            
+            #f=lambda x: x[~np.all(x== 0, axis=2)]#
+            #mani_vects=torch.tensor(f(manips_vec)).unsqueeze(dim=0)#
+            #print(mani_vects.shape)
+            feat,out_all_batch = model(mani_vects,qFeat)
             
             predicted_tfeat.append(feat.cpu().numpy())
             out_all.append(out_all_batch.cpu().numpy())
@@ -148,7 +154,7 @@ if __name__ == '__main__':
             with torch.no_grad():
                 for i, sample in enumerate(tqdm(gallery_loader)):
                     qFeat,label_t,mani_vects,legnths= sample
-                    feat,out_all_batch = model(mani_vects,qFeat,legnths)
+                    feat,out_all_batch = model(mani_vects,qFeat)
                     #TODO check if we shoul do normalization!
                     predicted_tfeat.append(feat.cpu().numpy())
             predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)

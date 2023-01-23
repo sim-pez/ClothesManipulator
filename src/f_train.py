@@ -37,7 +37,47 @@ class Trainer():
             self.model.cuda()
         else:
             print('Warning: Using CPU')
-            
+    def get_variable_legnth(self,manips_vec):
+        manips_vec=manips_vec.numpy()
+        f=lambda x: x[~np.all(x== 0, axis=1)]
+        list_manips=[[],[],[],[],[],[],[],[]]
+        id_x=[[],[],[],[],[],[],[],[]]
+        for i in range(len(manips_vec)):
+            l=f(manips_vec[i])
+            list_manips [len(l)-1].append(l)
+            id_x[len(l)-1].append(i)
+        return list_manips,id_x
+
+    def train_variable(self):
+        avg_loss = 0
+        #self.model.zero_grad()
+        self.model.train() #set the mode to train so it can update gradients
+        tq=tqdm(self.data_loader_train)
+        for i, sample in enumerate(tq):
+            qFeat, tFeat, mani_vects,legnths = sample
+            self.model.zero_grad()
+            list_manips,id_x=self.get_variable_legnth(mani_vects)
+            index_per=np.random.permutation(len(list_manips))
+            out_batch=[]
+            tFeat_batch=[]
+            for n in index_per:
+                if(len(list_manips[n])>0):
+                    list_manips_n=torch.tensor(list_manips[n])
+                    qFeat_n=qFeat[id_x[n]]
+                    out,hidden = self.model(list_manips_n,qFeat_n)
+                    tFeat_n=tFeat[id_x[n]]
+                    tFeat_batch.append(tFeat_n)
+                    out_batch.append(out)
+            out_batch=torch.cat(out_batch, axis=0).cuda()
+            tFeat_batch=torch.cat(tFeat_batch,axis=0).cuda()
+            #print(out_batch.shape,tFeat_batch.shape)
+            loss=self.loss(out_batch,tFeat_batch)
+            loss.backward()
+            self.optimizer.step()
+            avg_loss+= loss.item()
+                   
+            tq.set_description("train: Loss batch numero :{ind} , value loss: {l}".format(ind=i, l=loss.item()))
+        return avg_loss  / (i+1)
     def train(self):
         avg_loss = 0
         #self.model.zero_grad()
@@ -45,12 +85,10 @@ class Trainer():
         tq=tqdm(self.data_loader_train)
         for i, sample in enumerate(tq):
             qFeat, tFeat, mani_vects,legnths = sample
-            tFeat=tFeat.cuda()
             self.model.zero_grad()
-            
-            out,hidden = self.model(mani_vects,qFeat,legnths)
+            out,hidden = self.model(mani_vects,qFeat)
+            tFeat=tFeat.cuda()
             out.cuda()
-            
             loss=self.loss(out,tFeat)#(batch_size,output_dim)
             tq.set_description("train: Loss batch numero :{ind} , value loss: {l}".format(ind=i, l=loss.item()))
             loss.backward()
@@ -66,7 +104,7 @@ class Trainer():
             tq=tqdm(self.data_loader_test)
             for i, sample in enumerate(tq):
                 qFeat,label_t,mani_vects,legnths = sample
-                out,hidden = self.model(mani_vects,qFeat,legnths)
+                out,hidden = self.model(mani_vects,qFeat)
                 predicted_tfeat.append(out.cpu().numpy())
                # tFeat.cuda()
                 #out.cuda()
@@ -103,14 +141,14 @@ class Trainer():
         #print('Top@{k} accuracy: {acc}, Total hits: {h}'.format(k=k,acc=acc ,h=hits))       
                 
         return acc
-
+    
     def run(self):
         previous_best_avg_test_acc = 0.0
         with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
             f.write( "parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea}, \n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
                      n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.name_data_set ,epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
         for epoch in range(self.num_epochs):
-            avg_train_loss = self.train()
+            avg_train_loss = self.train_variable()
             if (epoch%5==0):
                 torch.save(self.model.state_dict(), os.path.join(self.log_dir, "ckpt_%d.pkl" % (epoch + 1)))
                 print('Saved new checkpoint  ckpt_{epoch}.pkl , avr loss {l}'.format( epoch=epoch+1, l=avg_train_loss))
@@ -147,13 +185,13 @@ if __name__=="__main__":
     query_labels=test_labels[t_id]
     #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
 
-    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels,N=1)
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
     
     
     train_loader=torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,
                                                drop_last=True)
-    test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
+    test_loader=torch.utils.data.DataLoader(test_data, batch_size=1, shuffle=False,
                                                sampler=torch.utils.data.SequentialSampler(test_data),
                                                drop_last=False)
     model=LSTM_ManyToOne(input_size=151,seq_len=par.N,output_size=4080,hidden_dim=4080,n_layers=par.NUM_LAYER,drop_prob=0.5)

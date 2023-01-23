@@ -2,7 +2,7 @@ import numpy as np
 import parameters as par
 import pickle
 import random
-from parameters import CREATE_ZERO_MANIP_ONLY
+from parameters import CREATE_ZERO_MANIP_ONLY, MOVE_ZERO_MANIP_LAST
 
 import warnings
 warnings.simplefilter('once', RuntimeWarning)
@@ -222,6 +222,9 @@ def create_n_manip(N, q_lbl, t_lbl):
         zero_manips = np.zeros((N - len(manip_list),len(multi_manip)), dtype = int)
         manip_list = np.concatenate((manip_list, zero_manips))
         assert N == len(manip_list)
+        
+        if not MOVE_ZERO_MANIP_LAST:
+            np.random.shuffle(manip_list)
 
 
     remaining = N - len(manip_list)
@@ -256,7 +259,7 @@ def create_n_manip(N, q_lbl, t_lbl):
             del_idx = list(range(len(manip_list)))
             random.shuffle(del_idx)
             manip_list = np.delete(manip_list, del_idx[:(-remaining)],0)
-            return manip_list
+            return manip_list, original_distance
 
         assert N - remaining == len(manip_list)
 
