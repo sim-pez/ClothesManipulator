@@ -47,7 +47,6 @@ def create_n_manip(N, q_lbl, t_lbl):
         mod_idx_candidates = list(range(len(manip_list)))
         random.shuffle(mod_idx_candidates)
 
-
         for candidate_idx in mod_idx_candidates:
             old_manip = manip_list[candidate_idx]
             old_p_list = np.where(old_manip == 1)
@@ -94,11 +93,11 @@ def create_n_manip(N, q_lbl, t_lbl):
                 mod_idx = candidate
                 break
             if candidate == mod_idx_candidates[-1]:
-                return manip_list, remaining, False  #available manips are all on size 2 attributes: you need fwbw
+                return manip_list, remaining, False
 
         old_manip = manip_list[mod_idx]
 
-        if np.count_nonzero(candidate_manip == 1) == 1 and np.count_nonzero(candidate_manip == -1) == 1: # il classico triangular
+        if np.count_nonzero(candidate_manip == 1) == 1 and np.count_nonzero(candidate_manip == -1) == 1:
 
             n_old = np.where(old_manip == -1)[0][0]
             p_old = np.where(old_manip == 1)[0][0]
@@ -131,10 +130,8 @@ def create_n_manip(N, q_lbl, t_lbl):
             manip_list = np.insert(manip_list, random.randint(first_idx, mod_idx), first_manip, 0)
 
 
-        else:   # new for single value manipulation
-
-
-            if np.count_nonzero(old_manip == 1) > 0: # old_manip: [0, 0, 0, 1]
+        else:  
+            if np.count_nonzero(old_manip == 1) > 0:
 
                 p_old = np.where(old_manip == 1)[0][0]
                 ci_low, ci_high = findCutIndexInterval(p_old)
@@ -207,10 +204,9 @@ def create_n_manip(N, q_lbl, t_lbl):
         bw_idx = random.choice(candidate_bw_idx)
         manip_list = np.insert(manip_list, bw_idx, manip_bw, 0)
 
-        # assert not np.any( np.add(manip_bw, manip_fw) ) # check if sum is all zero
-
         remaining -= 2
         return manip_list, remaining
+
 
     multi_manip =  np.subtract(t_lbl, q_lbl)
     manip_list = listify_manip(multi_manip, N)

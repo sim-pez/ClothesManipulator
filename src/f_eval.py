@@ -155,7 +155,6 @@ if __name__ == '__main__':
                 for i, sample in enumerate(tqdm(gallery_loader)):
                     qFeat,label_t,mani_vects,legnths= sample
                     feat,out_all_batch = model(mani_vects,qFeat)
-                    #TODO check if we shoul do normalization!
                     predicted_tfeat.append(feat.cpu().numpy())
             predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
             queries = predicted_tfeat

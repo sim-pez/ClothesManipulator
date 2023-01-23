@@ -4,29 +4,17 @@ import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import h5py
-import random
 import parameters as par
 from tqdm import tqdm
-import pickle
-from f_utils import listify_manip, create_n_manip
+from f_utils import create_n_manip
 
 class Data_Q_T(data.Dataset):
    
     def __init__(self, filename_data,feat_file,label_file,N=par.N):
-        """
-        Read file Couples_N_8.txt,maipolations_N_8.txt
-
-        gallary_feats_train.npy (!PROBLEM it's too big!) idea di fare file npy per ogni vector feat!! 
-        secondo sol:
-
-        divider usanndo 
-        """
         super(Data_Q_T, self).__init__()
         self.N=N
         self.filename_data = filename_data
         self.hf=self._load_h5_file_with_data(self.filename_data)
-       # self.q=self.hf['q']
-       # self.t=self.hf['t']
         self.feat=np.load(feat_file)
         self.labels=np.loadtxt(label_file,dtype=int)
         print("Dataset is loaded: ",self.__len__())
@@ -43,7 +31,6 @@ class Data_Q_T(data.Dataset):
         label_t=self.labels[t_id]
         manips,n=create_n_manip(self.N,label_q,label_t)
         return (q, t,manips,n)
-
 
     def _load_h5_file_with_data(self, file_name):
         hf = h5py.File(file_name)
@@ -126,18 +113,16 @@ class Data_Query(data.Dataset):
         #self.t=self.hf['t']
         self.feat=gallery_feat
         self.labels=label_data
-        
-        print("Dataset is loaded: ",self.__len__())
+        print("Dataset is loaded. Size: ",self.__len__())
+
     def __getitem__(self, indexes):
         
         q_id=self.hf['q'][indexes]
         t_id=self.hf['t'][indexes]
-        #t=self.feat[t_id]
         q=self.feat[q_id]
         label_q=self.labels[q_id]
         label_t=self.labels[t_id]
-        manips,n=create_n_manip(self.N,label_q,label_t)#TODO restituire la distanza N,usare self.N per la lunghezza della sequenza
-        #aggiungere i vettori zeri sempre in fondo
+        manips,n=create_n_manip(self.N,label_q,label_t)
         return (q,label_t,manips,n)
     def __len__(self):
         return self.hf['t'].shape[0]
