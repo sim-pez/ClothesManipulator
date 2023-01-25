@@ -48,5 +48,6 @@ knn
 mini_ds
 splits
 info.txt
-f_tests.ipynb
-s_tests.ipynb
+src/f_tests.ipynb
+src/s_tests.ipynb
+src/knn.py

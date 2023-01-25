@@ -123,7 +123,6 @@ class LSTM_ManyToOne(nn.Module):
 
         print("Model is loaded...")
         
-    #ad ogni iterazione viene passato il hidden precedente e il nuovo input    
     def forward(self, x, qFeat):
         # Pack the input
         batch_size = x.size(0)
@@ -165,7 +164,6 @@ class LSTM_ManyToOne(nn.Module):
         ########init_hidden
         h_0=tuple([ qFeat for k in range (self.n_layers)])
         h_0=torch.stack(h_0,dim=0)
-        #print(h_0.shape)
         #c_0=torch.zeros(self.n_layers, batch_size, self.hidden_dim,dtype=torch.float32)
         c_0=tuple([ qFeat for k in range (self.n_layers)])
         c_0=torch.stack(c_0,dim=0)

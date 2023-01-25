@@ -142,7 +142,7 @@ if __name__=="__main__":
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
     test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
     Data_test= h5py.File(par.DATA_TEST)
-    
+    print(train_data.__len__())
     test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
     test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
     sampler=torch.utils.data.SequentialSampler(test_data),
@@ -164,7 +164,7 @@ if __name__=="__main__":
 
             
   
-  
+    """
     tq=tqdm(train_loader)
     for i, sample in enumerate(tq):
         qFeat,tFeat,manips_vec,legnths = sample
@@ -179,7 +179,7 @@ if __name__=="__main__":
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
         
         break
-    """
+   
   
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
