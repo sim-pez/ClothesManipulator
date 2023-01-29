@@ -369,12 +369,16 @@ def eval_variable_help(model,data_loader):
                     out,hidden = model(list_manips_n,qFeat_n)
                     idx_n.append(id_x[n])
                     out_batch.append(out)
-            idx_n=torch.cat(idx_n,axis=0)
+            idx_n=np.concatenate(idx_n,axis=0)
+           
             out_batch=torch.cat(out_batch, axis=0)
-            orderd_out_batch=torch.zeros(out_batch.shape)
+            orderd_out_batch=torch.zeros(out_batch.shape).cuda()
+            
             for i in range(len(idx_n)):
-                orderd_out_batch[id_x[i]]=out_batch[i] # es: idx[1]=17 corrispond to out batch[1] then i want map out_batch[1] to orderd_out_batch[17]
+                
+                orderd_out_batch[idx_n[i]]=out_batch[i] # es: idx[1]=17 corrispond to out batch[1] then i want map out_batch[1] to orderd_out_batch[17]
             predicted_tfeat.append(orderd_out_batch.cpu().numpy())
+            
     predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
     
             

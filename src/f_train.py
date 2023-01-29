@@ -97,8 +97,12 @@ class Trainer():
     def run(self):
         previous_best_avg_test_acc = 0.0
         with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
-            f.write("parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea}, \n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
-                     n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.name_data_set ,epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
+            f.write("parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea},MOVE_ZERO_MANIP_LAST:{move_zer},VAL_ORIGINAL:{val_orig},MODEL_EVAL:{model_eval}, Eval_variable_legnth:{eval_varia},Train_variable_legnth:{train_var},\n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
+                     n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.name_data_set ,move_zer=par.MOVE_ZERO_MANIP_LAST,
+                     epoch=par.NUM_EPOCH,lr=par.LR,
+                     val_orig=par.VAL_ORIGINAL,model_eval=par.MODEL_EVAL,
+                     eval_varia=par.Eval_variable_legnth,train_var=par.Train_variable_legnth,
+                     s=par.step_decay,dec=par.weight_decay))
         for epoch in range(self.num_epochs):
             if (par.Train_variable_legnth):
                 avg_train_loss = self.train_variable()
@@ -126,7 +130,7 @@ class Trainer():
 
 if __name__=="__main__":
    
-    torch.cuda.set_device(0)
+    torch.cuda.set_device(1)
     #torch.set_default_tensor_type('torch.cuda.FloatTensor')
     print('Loading dataset...')
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
@@ -136,7 +140,7 @@ if __name__=="__main__":
     query_labels=test_labels[t_id]
     #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
 
-    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels,N=1)
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels,N=par.N)
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
     
     

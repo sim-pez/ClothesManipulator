@@ -6,9 +6,7 @@ import argparse
 import os
 import numpy as np
 from tqdm import tqdm
-
 import torch
-import torch.nn.functional as F
 import torchvision.transforms as transforms
 from dataloader import Data
 from f_model import Extractor

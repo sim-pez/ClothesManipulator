@@ -43,10 +43,16 @@ if __name__ == '__main__':
     print("N is :",par.N)
     acc,res=calc_accuracy(database,queries,query_labels,test_labels,k,"last step",dim)
     with open(log_dir, 'a') as f:
+        f.write("parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea},MOVE_ZERO_MANIP_LAST:{move_zer},VAL_ORIGINAL:{val_orig},MODEL_EVAL:{model_eval}, Eval_variable_legnth:{eval_varia},Train_variable_legnth:{train_var},\n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
+                     n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.DATA_TEST,move_zer=par.MOVE_ZERO_MANIP_LAST,
+                     epoch=par.NUM_EPOCH,lr=par.LR,
+                     val_orig=par.VAL_ORIGINAL,model_eval=par.MODEL_EVAL,
+                     eval_varia=par.Eval_variable_legnth,train_var=par.Train_variable_legnth,
+                     s=par.step_decay,dec=par.weight_decay))
         f.write("\n N is :{n}, res: {res}".format(n=par.N,res=res))
-    eval_all=True
+    
     #dataset_distance=par.all_data[par.name_data_set]
-    if(eval_all):
+    if(par.EVAL_ALL):
         for n in range(1,par.N):
             test_data.__set_N__(n)
             print("N is :",n)
