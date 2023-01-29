@@ -2,14 +2,14 @@ import datetime
 import os
 import torch
 import torch.optim.lr_scheduler as lr_scheduler
-from f_dataloader import Data_Q_T,fast_loader,Data_Query
+from f_dataloader import Data_Q_T,Data_Query
 import parameters as par
 from f_model import LSTM_ManyToOne
 from tqdm import tqdm
 import numpy as np
-import faiss
 import h5py
 torch.manual_seed(100)
+from f_utils import calc_accuracy,eval_help,eval_variable_help,get_variable_legnth
 
 
 
@@ -37,17 +37,6 @@ class Trainer():
             self.model.cuda()
         else:
             print('Warning: Using CPU')
-    def get_variable_legnth(self,manips_vec):
-        manips_vec=manips_vec.numpy()
-        f=lambda x: x[~np.all(x== 0, axis=1)]
-        list_manips=[[],[],[],[],[],[],[],[]]
-        id_x=[[],[],[],[],[],[],[],[]]
-        for i in range(len(manips_vec)):
-            l=f(manips_vec[i])
-            list_manips [len(l)-1].append(l)
-            id_x[len(l)-1].append(i)
-        return list_manips,id_x
-
     def train_variable(self):
         avg_loss = 0
         #self.model.zero_grad()
@@ -56,7 +45,7 @@ class Trainer():
         for i, sample in enumerate(tq):
             qFeat, tFeat, mani_vects,legnths = sample
             self.model.zero_grad()
-            list_manips,id_x=self.get_variable_legnth(mani_vects)
+            list_manips,id_x=get_variable_legnth(mani_vects)
             index_per=np.random.permutation(len(list_manips))
             out_batch=[]
             tFeat_batch=[]
@@ -70,7 +59,7 @@ class Trainer():
                     out_batch.append(out)
             out_batch=torch.cat(out_batch, axis=0).cuda()
             tFeat_batch=torch.cat(tFeat_batch,axis=0).cuda()
-            #print(out_batch.shape,tFeat_batch.shape)
+            
             loss=self.loss(out_batch,tFeat_batch)
             loss.backward()
             self.optimizer.step()
@@ -80,7 +69,7 @@ class Trainer():
         return avg_loss  / (i+1)
     def train(self):
         avg_loss = 0
-        #self.model.zero_grad()
+        
         self.model.train() #set the mode to train so it can update gradients
         tq=tqdm(self.data_loader_train)
         for i, sample in enumerate(tq):
@@ -95,74 +84,36 @@ class Trainer():
             self.optimizer.step()
             avg_loss += loss.item()
         return avg_loss / (i+1)
-        
+   
+
     def eval(self):
-        self.model.eval()
-        predicted_tfeat = []
-        
-        with torch.no_grad():
-            tq=tqdm(self.data_loader_test)
-            for i, sample in enumerate(tq):
-                qFeat,label_t,mani_vects,legnths = sample
-                out,hidden = self.model(mani_vects,qFeat)
-                predicted_tfeat.append(out.cpu().numpy())
-               # tFeat.cuda()
-                #out.cuda()
-                #loss=self.loss(out,tFeat)#(batch_size,output_dim  
-                # #avg_loss += loss.item() 
-               # tq.set_description("eval:Loss batch numero :{ind} , value loss: {l}".format(ind=i, l=loss.item()))
-        predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
-        dim = 4080  # dimension
-        num_database = self.gallery_feat.shape[0]  # number of images in database
-        num_query = predicted_tfeat.shape[0]  # number of 
-        print("Num of image in database is {n1}, Num of query img is {n2}".format(n1=num_database,n2=num_query))
-
-        database = self.gallery_feat
-        queries = predicted_tfeat
-        index = faiss.IndexFlatL2(dim)
-        index.add(database)
-        k = 50
-        _, knn = index.search(queries, k)
-
-        assert (self.query_labels.shape[0] == predicted_tfeat.shape[0])
-      
-        #compute top@k acc
-        hits = 0
-        tq=tqdm(range(num_query))
-        for q in tq: # itera i dati predicted_tfeat
-            neighbours_idxs = knn[q]# gli indici dei k-feat più simili alla predicted_tfeat[q]
-            for n_idx in neighbours_idxs:
-                if (self.test_labels[n_idx] == self.query_labels[q]).all():
-                    hits += 1
-                    break
-            tq.set_description("Num of hit {h}".format(h=hits))
-
-        acc=(hits/num_query)*100
-        #print('Top@{k} accuracy: {acc}, Total hits: {h}'.format(k=k,acc=acc ,h=hits))       
-                
+        if(par.Eval_variable_legnth):
+            predicted_tfeat=eval_variable_help(self.model,self.data_loader_test)
+        else:
+            predicted_tfeat =eval_help(self.model,self.data_loader_test)
+        acc,res=calc_accuracy(self.gallery_feat,predicted_tfeat,self.query_labels,self.test_labels,par.K,par.N,dim = 4080)
         return acc
     
     def run(self):
         previous_best_avg_test_acc = 0.0
         with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
-            f.write( "parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea}, \n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
+            f.write("parameter of model:\nDataset:{data} N:{n},num of layer:{layer},CREATE_ZERO_MANIP_ONLY :{crea}, \n num_epoch:{epoch} ,lr:{lr},step_decay:{s},weight_decay:{dec},cont_training:{cont},pretrainde_model:{pretraind},".format(pretraind= par.pretrain_model,cont=par.contin_training,layer=par.NUM_LAYER,
                      n=par.N,crea=par.CREATE_ZERO_MANIP_ONLY,data=par.name_data_set ,epoch=par.NUM_EPOCH,lr=par.LR,s=par.step_decay,dec=par.weight_decay))
         for epoch in range(self.num_epochs):
-            avg_train_loss = self.train_variable()
+            if (par.Train_variable_legnth):
+                avg_train_loss = self.train_variable()
+            else:
+                avg_train_loss=self.train()
             if (epoch%5==0):
                 torch.save(self.model.state_dict(), os.path.join(self.log_dir, "ckpt_%d.pkl" % (epoch + 1)))
                 print('Saved new checkpoint  ckpt_{epoch}.pkl , avr loss {l}'.format( epoch=epoch+1, l=avg_train_loss))
-                
             avg_test_acc= self.eval()
-
             result="Epoch {e}, Train_loss: {l}, test_acc:{a} ,lr:{lr}\n".format(lr= self.lr_scheduler.get_lr(),e=epoch + 1,l=avg_train_loss,a=avg_test_acc)
             with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
                 f.write(result)
             print(result)
 
-            # store parameters
-            
-
+        
             if avg_test_acc > previous_best_avg_test_acc:
                 with open(os.path.join(self.log_dir, 'log.txt'), 'a') as f:
                     f.write("saved_a new best_model\n ")

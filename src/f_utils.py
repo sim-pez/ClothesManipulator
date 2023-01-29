@@ -3,8 +3,11 @@ import parameters as par
 import pickle
 import random
 from parameters import CREATE_ZERO_MANIP_ONLY, MOVE_ZERO_MANIP_LAST
-
+import faiss
+from tqdm import tqdm
+from utils import split_labels,  compute_NDCG, get_target_attr
 import warnings
+import torch
 warnings.simplefilter('once', RuntimeWarning)
 
 
@@ -260,3 +263,119 @@ def create_n_manip(N, q_lbl, t_lbl):
         assert N - remaining == len(manip_list)
 
     return manip_list, original_distance
+
+
+def calc_accuracy(database,queries,query_labels,test_labels,k,step,dim = 4080):
+    num_database = database.shape[0]
+    num_query = queries.shape[0]
+    print("Step:{s} ,Num of image in database is {n1}, Num of query img is {n2}".format(s=step,n1=num_database,n2=num_query))
+
+    index = faiss.IndexFlatL2(dim)
+    index.add(database)
+    _, knn = index.search(queries, k)
+    assert (query_labels.shape[0] == queries.shape[0])
+    #TODO essendo l'immagine target è stata usata più volte nel data set,
+    #  ogni volta partendo da un'immagine di query diversa,
+    #sarebbe utile confrontare quanto le stima dei feat_target che corrispondono
+    #  allo stesso target sono simili tra loro
+    #si poù confrontare anche a livello di attributi
+    #compute top@k acc
+    hits = 0
+    tq=tqdm(range(num_query))
+    for q in tq: # itera i dati predicted_tfeat
+        neighbours_idxs = knn[q]# gli indici dei k-feat più simili alla predicted_tfeat[q]
+        for n_idx in neighbours_idxs:
+            if (test_labels[n_idx] == query_labels[q]).all():
+                hits += 1
+                break
+        tq.set_description("Num of hit {h}".format(h=hits))
+    acc=(hits/num_query)*100 
+    result_string='Top@{k} accuracy: {acc} ,Total hits{h}'.format(k=k, acc=acc , h=hits)
+    print(result_string)
+    """ 
+    #compute NDCG
+    ndcg = []
+    # ndcg_target = []  # consider changed attribute only
+    #ndcg_others = []  # consider other attributes
+
+    for q in tqdm(range(num_query)):
+        rel_scores = []
+    # target_scores = []
+        #others_scores = []
+        neighbours_idxs = knn[q]
+    # indicator = query_inds[q]
+        #target_attr = get_target_attr(indicator, gallery_data.attr_num)
+        attr_num=np.loadtxt(os.path.join(par.ROOT_DIR, "splits/Shopping100k/attr_num.txt") ,dtype=int)
+        target_label = split_labels(query_labels[q],attr_num)
+        for n_idx in neighbours_idxs:
+            n_label = split_labels(test_labels[n_idx], attr_num)
+            # compute matched_labels number
+            match_cnt = 0
+            others_cnt = 0
+            for i in range(len(n_label)):
+                if (n_label[i] == target_label[i]).all():
+                    match_cnt += 1
+            rel_scores.append(match_cnt / len(attr_num))
+
+        ndcg.append(compute_NDCG(np.array(rel_scores)))
+    print    
+    print('NDCG@{k}: {ndcg}'.format(k=k, ndcg=np.mean(ndcg)))
+    """
+    return acc,result_string
+
+
+def eval_help(model,data_loader):
+    model.eval()
+    predicted_tfeat = []
+    with torch.no_grad():
+        tq=tqdm(data_loader)
+        for i, sample in enumerate(tq):
+            qFeat,label_t,mani_vects,legnths = sample
+            out,hidden = model(mani_vects,qFeat)
+            predicted_tfeat.append(out.cpu().numpy())
+    predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
+    return predicted_tfeat
+def get_variable_legnth(manips_vec):
+    #Tested and work for N=8, 
+    manips_vec=manips_vec.numpy()
+    f=lambda x: x[~np.all(x== 0, axis=1)]
+    list_manips=[]
+    id_x=[]
+    for i in range(par.N):
+        list_manips.append([])
+        id_x.append([])
+
+    #list_manips=[[],[],[],[],[],[],[],[]]
+    #id_x=[[],[],[],[],[],[],[],[]]
+    for i in range(len(manips_vec)):
+        l=f(manips_vec[i])
+        list_manips [len(l)-1].append(l)
+        id_x[len(l)-1].append(i)
+    return list_manips,id_x
+
+def eval_variable_help(model,data_loader):
+    predicted_tfeat = []
+    with torch.no_grad():
+        tq=tqdm(data_loader)
+        for i, sample in enumerate(tq):
+            qFeat,label_t,mani_vects,legnths = sample
+            out_batch=[]
+            idx_n=[]
+            list_manips,id_x=get_variable_legnth(mani_vects)
+            for n in range(len(list_manips)):
+                if(len(list_manips[n])>0):
+                    list_manips_n=torch.tensor(list_manips[n])
+                    qFeat_n=qFeat[id_x[n]]
+                    out,hidden = model(list_manips_n,qFeat_n)
+                    idx_n.append(id_x[n])
+                    out_batch.append(out)
+            idx_n=torch.cat(idx_n,axis=0)
+            out_batch=torch.cat(out_batch, axis=0)
+            orderd_out_batch=torch.zeros(out_batch.shape)
+            for i in range(len(idx_n)):
+                orderd_out_batch[id_x[i]]=out_batch[i] # es: idx[1]=17 corrispond to out batch[1] then i want map out_batch[1] to orderd_out_batch[17]
+            predicted_tfeat.append(orderd_out_batch.cpu().numpy())
+    predicted_tfeat= np.concatenate(predicted_tfeat, axis=0)
+    
+            
+    return predicted_tfeat

@@ -2,11 +2,10 @@ import os
 import numpy as np
 import torch
 import torch.utils.data as data
-import torchvision.transforms as transforms
 import h5py
 import parameters as par
 from tqdm import tqdm
-from f_utils import create_n_manip
+from f_utils import create_n_manip,get_variable_legnth
 
 class Data_Q_T(data.Dataset):
    
@@ -148,23 +147,6 @@ if __name__=="__main__":
     sampler=torch.utils.data.SequentialSampler(test_data),
                                                
                                                drop_last=False)
-   
-    def get_variable_legnth(manips_vec):
-        manips_vec=manips_vec.numpy()
-        f=lambda x: x[~np.all(x== 0, axis=1)]
-        list_manips=[[],[],[],[],[],[],[],[]]
-        id_x=[[],[],[],[],[],[],[],[]]
-        for i in range(len(manips_vec)):
-            l=f(manips_vec[i])
-            list_manips [len(l)-1].append(l)
-            id_x[len(l)-1].append(i)
-        return list_manips,id_x
-
-
-
-            
-  
-    """
     tq=tqdm(train_loader)
     for i, sample in enumerate(tq):
         qFeat,tFeat,manips_vec,legnths = sample
@@ -174,17 +156,12 @@ if __name__=="__main__":
             list_manips_n=torch.tensor(list_manips[n])
             qFeat_n=qFeat[id_x[n]]
             tFeat_n=tFeat[id_x[n]]
-           
-        
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
         
         break
-   
-  
     tq=tqdm(test_loader)
     for i, sample in enumerate(tq):
         qFeat,tFeat,manips_vec ,legnths= sample
-       
         tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
         
-    """   
+ 
