@@ -9,7 +9,7 @@ from tqdm import tqdm
 import numpy as np
 import h5py
 torch.manual_seed(100)
-from f_utils import calc_accuracy,eval_help,eval_variable_help,get_variable_legnth
+from utils import calc_accuracy,eval_help,eval_variable_help,get_variable_legnth
 
 
 

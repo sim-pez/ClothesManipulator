@@ -4,7 +4,7 @@ import torchvision.transforms as transforms
 import numpy as np
 import h5py
 from dataloader import Data
-from f_utils import cut_index
+from utils import cut_index
 from numba import jit
 
 from utils import split_labels

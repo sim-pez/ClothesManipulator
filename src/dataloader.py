@@ -5,7 +5,8 @@ import torch.utils.data as data
 import h5py
 import parameters as par
 from tqdm import tqdm
-from f_utils import create_n_manip,get_variable_legnth
+import torchvision.transforms as transforms
+from utils import create_n_manip,get_variable_legnth
 from utils import get_idx_label
 class Data(data.Dataset):
     """
