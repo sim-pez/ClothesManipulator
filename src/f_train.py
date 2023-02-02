@@ -4,7 +4,7 @@ import torch
 import torch.optim.lr_scheduler as lr_scheduler
 from dataloader import Data_Q_T,Data_Query
 import parameters as par
-from f_model import LSTM_ManyToOne
+from model import LSTM_ManyToOne
 from tqdm import tqdm
 import numpy as np
 import h5py

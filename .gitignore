@@ -27,7 +27,6 @@ splits/Shopping100k/labels_train.txt
 splits/Shopping100k/ref_test.txt
 splits/Shopping100k/triplet_train_ind.txt
 splits/Shopping100k/triplet_train.txt
-src/eval.py
 src/init_mem.py
 src/__pycache__
 src/train_attr_manip.py

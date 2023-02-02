@@ -9,7 +9,7 @@ from tqdm import tqdm
 import torch
 import torchvision.transforms as transforms
 from dataloader import Data
-from f_model import Extractor
+from model import Extractor
 from argument_parser import add_base_args, add_eval_args
 
 import constants as C
