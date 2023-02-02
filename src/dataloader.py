@@ -1,77 +1,12 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: CC-BY-NC-4.0
-
 import os
 import numpy as np
-from PIL import Image, ImageFile
+import torch
 import torch.utils.data as data
-import torchvision.transforms as transforms
-from utils import get_idx_label
+import h5py
 import parameters as par
-
-class DataQuery(data.Dataset):
-    """
-    Load generated queries for evaluation. Each query consists of a reference image and an indicator vector
-    The indicator vector consists of -1, 1 and 0, which means remove, add, not modify
-    Args:
-        file_root: path that stores preprocessed files (e.g. imgs_test.txt, see README.md for more explanation)
-        img_root_path: path that stores raw images
-        ref_ids: the file name of the generated txt file, which includes the indices of reference images
-        query_inds: the file name of the generated txt file, which includes the indicator vector for queries.
-        img_transform: transformation functions for img. Default: ToTensor()
-        mode: the mode 'train' or 'test' decides to load training set or test set
-    """
-    def __init__(self, file_root,  img_root_path, ref_ids,  query_inds, img_transform=None,
-                 mode='test'):
-        super(DataQuery, self).__init__()
-
-        self.file_root = file_root
-        self.img_transform = img_transform
-        self.img_root_path = img_root_path
-        self.mode = mode
-        self.ref_ids = ref_ids
-        self.query_inds = query_inds
-
-        if not self.img_transform:
-            self.img_transform = transforms.ToTensor()
-
-        self.img_data, self.label_data, self.ref_idxs, self.query_inds, self.attr_num = self._load_dataset()
-     
-       
-
-
-    def _load_dataset(self):
-        with open(os.path.join(self.file_root, "imgs_%s.txt" % self.mode)) as f:
-            img_data = f.read().splitlines()
-
-        label_data = np.loadtxt(os.path.join(self.file_root, "labels_%s.txt" % self.mode), dtype=int)
-
-        query_inds = np.loadtxt(os.path.join(self.file_root, self.query_inds), dtype=int)
-        ref_idxs = np.loadtxt(os.path.join(self.file_root, self.ref_ids), dtype=int)
-
-        attr_num = np.loadtxt(os.path.join(self.file_root, "attr_num.txt"), dtype=int)
-
-        assert len(img_data) == label_data.shape[0]
-
-        return img_data, label_data, ref_idxs, query_inds, attr_num
-
-    def __len__(self):
-        return self.ref_idxs.shape[0]
-
-    def __getitem__(self, index):
-
-        ref_id = int(self.ref_idxs[index])
-        img = Image.open(os.path.join(self.img_root_path, self.img_data[ref_id]))
-        img = img.convert('RGB')
-
-        if self.img_transform:
-            img = self.img_transform(img)
-
-        indicator = self.query_inds[index]
-
-        return img, indicator
-
-
+from tqdm import tqdm
+from f_utils import create_n_manip,get_variable_legnth
+from utils import get_idx_label
 class Data(data.Dataset):
     """
     Load data for attribute predictor training (pre-training)
@@ -118,80 +53,162 @@ class Data(data.Dataset):
         return img, get_idx_label(label_vector, self.attr_num)
 
 
-class DataTriplet(data.Dataset):
-    """
-    Load generated attribute manipulation triplets for training.
-    Args:
-        file_root: path that stores preprocessed files (e.g. imgs_train.txt, see README.md for more explanation)
-        img_root_path: path that stores raw images
-        triplet_name: the filename of generated txt file, which includes ids of sampled triplets
-        mode: 'train' or 'valid'
-        ratio: ratio to split train and validation set. Default: 0.9
-    """
-    def __init__(self, file_root, img_root_path, triplet_name, img_transform=None, mode='train', ratio=0.9):
-        self.file_root = file_root
-        self.img_transform = img_transform
-        self.img_root_path = img_root_path
-        self.mode = mode
-        self.triplet_name = triplet_name
-        self.ratio = ratio
+class Data_Q_T(data.Dataset):
+   
+    def __init__(self, filename_data,feat_file,label_file,N=par.N):
+        super(Data_Q_T, self).__init__()
+        self.N=N
+        self.filename_data = filename_data
+        self.hf=self._load_h5_file_with_data(self.filename_data)
+        self.feat=np.load(feat_file)
+        self.labels=np.loadtxt(label_file,dtype=int)
+        print("Dataset is loaded: ",self.__len__())
+        
+        
+    def __getitem__(self, indexes):
+       # t_id=self.hf["t"][indexes]
+        #q_id=self.hf["q"][indexes]
+        t_id=self.hf['t'][indexes]
+        q_id=self.hf['q'][indexes]
+        q=self.feat[q_id]
+        t=self.feat[t_id]
+        label_q=self.labels[q_id]
+        label_t=self.labels[t_id]
+        manips,n=create_n_manip(self.N,label_q,label_t)
+        return (q, t,manips,n)
 
-        if self.img_transform is None:
-            self.img_transform = transforms.ToTensor()
-
-        self.triplets, self.triplets_inds, self.img_data, self.label_one_hot, self.attr_num = self._load_dataset()
-
-    def _load_dataset(self):
-        with open(os.path.join(self.file_root, "imgs_train.txt")) as f:
-            img_data = f.read().splitlines()
-
-        label_one_hot = np.loadtxt(os.path.join(self.file_root, "labels_train.txt"), dtype=int)
-        assert len(img_data) == label_one_hot.shape[0]
-
-        with open(os.path.join(self.file_root, "%s.txt" % self.triplet_name)) as f:
-            triplets = f.read().splitlines()
-
-        triplets_inds = np.loadtxt(os.path.join(self.file_root, "%s_ind.txt" % self.triplet_name), dtype=int)  #indicators
-
-        N = int(len(triplets) * self.ratio) #split train/val
-
-        attr_num = np.loadtxt(os.path.join(self.file_root, "attr_num.txt"), dtype=int)
-
-        if self.mode == 'train':
-            triplets_o = triplets[:N]
-            triplets_inds_o = triplets_inds[:N]
-        elif self.mode == 'valid':
-            triplets_o = triplets[N:]
-            triplets_inds_o = triplets_inds[N:]
-
-        return triplets_o, triplets_inds_o, img_data,  label_one_hot, attr_num
+    def _load_h5_file_with_data(self, file_name):
+        hf = h5py.File(file_name)
+        return hf
 
     def __len__(self):
-        return len(self.triplets)
+        return self.hf['t'].shape[0]
 
-    def __getitem__(self, index):
 
-        ref_id, pos_id, neg_id = self.triplets[index].split(' ')
-        idxs = {'ref': int(ref_id), 'pos': int(pos_id), 'neg': int(neg_id)}
-        imgs = {}
-        for key in idxs.keys():
-            with Image.open(os.path.join(self.img_root_path, self.img_data[idxs[key]])) as img:
-                img = img.convert('RGB')
-                if self.img_transform:
-                    img = self.img_transform(img)
-                imgs[key] = img
+class RandomBatchSampler(data.Sampler):
+    """Sampling class to create random sequential batches from a given dataset
+    E.g. if data is [1,2,3,4] with bs=2. Then first batch, [[1,2], [3,4]] then shuffle batches -> [[3,4],[1,2]]
+    This is useful for cases when you are interested in 'weak shuffling'
+    :param dataset: dataset you want to batch
+    :type dataset: torch.utils.data.Dataset
+    :param batch_size: batch size
+    :type batch_size: int
+    :returns: generator object of shuffled batch indices
+    """
+    def __init__(self, dataset, batch_size,shuffl=True):
+        self.batch_size = batch_size
+        self.dataset_length = len(dataset)
+        self.n_batches = self.dataset_length / self.batch_size
+        self.batch_ids=torch.arange(0,int(self.n_batches))
+        if shuffl==True:
+            self.batch_ids = torch.randperm(int(self.n_batches))
 
-        one_hots = {}
-        for key in idxs.keys():
-            one_hots[key] = self.label_one_hot[idxs[key]]
+    def __len__(self):
+        return self.batch_size
 
-        indicator = self.triplets_inds[index]
+    def __iter__(self):
+        for id in self.batch_ids:
+            idx = torch.arange(id * self.batch_size, (id + 1) * self.batch_size)
+            for index in idx:
+                yield int(index)
+        if int(self.n_batches) < self.n_batches:
+            idx = torch.arange(int(self.n_batches) * self.batch_size, self.dataset_length)
+            for index in idx:
+                yield int(index)
 
-        labels = {}
-        for key in idxs.keys():
-            labels[key] = get_idx_label(one_hots[key], self.attr_num)
+def fast_loader(dataset, batch_size=300, drop_last=False, transforms=None,shuffl=True):
+    """Implements fast loading by taking advantage of .h5 dataset
+    The .h5 dataset has a speed bottleneck that scales (roughly) linearly with the number
+    of calls made to it. This is because when queries are made to it, a search is made to find
+    the data item at that index. However, once the start index has been found, taking the next items
+    does not require any more significant computation. So indexing data[start_index: start_index+batch_size]
+    is almost the same as just data[start_index]. The fast loading scheme takes advantage of this. However,
+    because the goal is NOT to load the entirety of the data in memory at once, weak shuffling is used instead of
+    strong shuffling.
+    :param dataset: a dataset that loads data from .h5 files
+    :type dataset: torch.utils.data.Dataset
+    :param batch_size: size of data to batch
+    :type batch_size: int
+    :param drop_last: flag to indicate if last batch will be dropped (if size < batch_size)
+    :type drop_last: bool
+    :returns: dataloading that queries from data using shuffled batches
+    :rtype: torch.utils.data.DataLoader
+    """
+    return data.DataLoader(
+        dataset, batch_size=None,  # must be disabled when using samplers
+        sampler=data.BatchSampler(RandomBatchSampler(dataset, batch_size,shuffl), batch_size=batch_size, drop_last=drop_last)
+    )
 
-        return imgs, \
-               one_hots, \
-               labels, \
-               indicator
+class Data_Query(data.Dataset):
+    def __init__(self,Data_test, gallery_feat,label_data,N=par.N):
+        """
+        Data_tests (q,t) gallery_feat
+        Read file Couples_N_8.txt,maipolations_N_8.txt
+
+        gallary_feats_train.npy (!PROBLEM it's too big!) idea di fare file npy per ogni vector feat!! 
+        secondo sol:
+
+        divider usanndo 
+        """
+        super(Data_Query, self).__init__()
+        self.N=N
+        self.VAL=par.VAL_ORIGINAL
+        self.hf=Data_test
+        #self.q=self.hf['q']#id_query
+        #self.t=self.hf['t']
+        self.feat=gallery_feat
+        self.labels=label_data
+        print("Dataset is loaded. Size: ",self.__len__())
+
+    def __getitem__(self, indexes):
+        
+        q_id=self.hf['q'][indexes]
+        t_id=self.hf['t'][indexes]
+        q=self.feat[q_id]
+        label_q=self.labels[q_id]
+        label_t=self.labels[t_id]
+        manips,n=create_n_manip(self.N,label_q,label_t)
+        return (q,label_t,manips,n)
+    def __len__(self):
+        return self.hf['t'].shape[0]
+    def __set_N__(self,newN):
+        self.N=newN
+
+
+
+
+if __name__=="__main__":
+    train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True,
+                                               
+                                               drop_last=True)
+    #test_data =Data_Q_T(par.DATA_TEST,par.FEAT_TEST_SENZA_N,par.LABEL_TEST)
+
+    gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
+    test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
+    Data_test= h5py.File(par.DATA_TEST)
+    print(train_data.__len__())
+    test_data=Data_Query(Data_test=Data_test,gallery_feat=gallery_feat,label_data=test_labels)
+    test_loader=torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False,
+    sampler=torch.utils.data.SequentialSampler(test_data),
+                                               
+                                               drop_last=False)
+    tq=tqdm(train_loader)
+    for i, sample in enumerate(tq):
+        qFeat,tFeat,manips_vec,legnths = sample
+        list_manips,id_x=get_variable_legnth(manips_vec)
+        index_per=np.random.permutation(len(list_manips))
+        for n in index_per:
+            list_manips_n=torch.tensor(list_manips[n])
+            qFeat_n=qFeat[id_x[n]]
+            tFeat_n=tFeat[id_x[n]]
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
+        
+        break
+    tq=tqdm(test_loader)
+    for i, sample in enumerate(tq):
+        qFeat,tFeat,manips_vec ,legnths= sample
+        tq.set_description("process batch:{ind}, shapes{s}".format(ind=i,s=(qFeat.shape, manips_vec.shape, tFeat.shape,legnths.shape)))
+        break
+        
+ 

@@ -6,7 +6,7 @@ import torch
 import h5py
 from f_model import LSTM_ManyToOne
 from f_utils import calc_accuracy,eval_help,eval_variable_help
-from f_dataloader import Data_Query
+from dataloader import Data_Query
 import parameters as par
 
 

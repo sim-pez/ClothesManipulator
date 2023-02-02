@@ -5,8 +5,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torchvision
-from f_dataloader import Data_Q_T,Data_Query
+
+from dataloader import Data_Q_T,Data_Query
 import parameters as par
 from tqdm import tqdm
 import h5py
