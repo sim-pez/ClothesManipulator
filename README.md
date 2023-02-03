@@ -49,3 +49,8 @@ You can evaluate model with:
 python3 f_eval.py
 ```
 
+# Test Results
+Here is a comparison between our model with the best setting and amazon's one
+<p float="left" align="center">
+  <img src="docs/results.png" width="50%"  />
+</p>
