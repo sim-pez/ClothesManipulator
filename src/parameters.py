@@ -27,7 +27,7 @@ Train_variable_legnth=False # If true will train with variable legnth, CREATE_ZE
 Eval_variable_legnth=False
 
 VAL_ORIGINAL=True # if set true, will validate on the amazon data set.
-MODEL_EVAL= "01-29-14:13" #Folder of model to validate, used in eval.py
+MODEL_EVAL= "01-14-04:07" #Folder of model to validate, used in eval.py
 EVAL_ALL=False
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR=lambda x,y :os.path.join(y,"multi_manip/{}".format(x))

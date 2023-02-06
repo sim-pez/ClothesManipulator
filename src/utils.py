@@ -9,7 +9,7 @@ import random
 from parameters import CREATE_ZERO_MANIP_ONLY, MOVE_ZERO_MANIP_LAST
 import faiss
 from tqdm import tqdm
-from utils import split_labels,  compute_NDCG, get_target_attr
+
 import warnings
 import torch
 warnings.simplefilter('once', RuntimeWarning)
