@@ -1,3 +1,4 @@
+#used to generate couples from the dataset
 import constants as C
 import random
 import torchvision.transforms as transforms

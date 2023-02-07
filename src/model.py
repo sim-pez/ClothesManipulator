@@ -123,7 +123,6 @@ if __name__=="__main__":
     torch.cuda.set_device(0)
     train_data =Data_Q_T(par.DATA_TRAIN,par.FEAT_TRAIN_SENZA_N,par.LABEL_TRAIN)
     train_loader=torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True,drop_last=False)
-    #test_loader=fast_loader(test_data,batch_size=32)
     gallery_feat=np.load(par.FEAT_TEST_SENZA_N)
     test_labels = np.loadtxt(os.path.join(par.ROOT_DIR,par.LABEL_TEST), dtype=int)
     Data_test= h5py.File(par.DATA_TEST)
