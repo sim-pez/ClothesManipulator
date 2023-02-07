@@ -9,7 +9,7 @@ step_decay = 15
 weight_decay = 0.3
 
 contin_training = False   # If set True will continue training from pretrained model
-pretrain_model = ""      # Name of folder that contains the model resume training
+pretrain_model = ""       # Name of folder that contains the model resume training
 
 name_data_set = "couples_N_1_4_6_8_mixed.h5" # dataset name
 all_data = {"couples_N_1_amazon.h5":1,"couples_N_4_small.h5":4,"couples_N_6_small.h5":6,"couples_N_8_small.h5":8,"couples_N_1_4_6_8_mixed.h5":8}
